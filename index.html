@@ -216,20 +216,20 @@
         state['m4']
           ? `└─ hráš proti: ${secondOpponent}`
           : '└─ hráš proti porazenému zo zápasu:',
-        state['m4']
-          ? ''
-          : '• Gréč / Žák (S13) vs Ludha / Mečiar (S4)',
+        state['m4'] ? '' : '• Gréč / Žák (S13) vs Ludha / Mečiar (S4)',
         '',
         state['m4'] ? '' : line('Potenciálny súper:', [secondOpponent]),
         '',
         '3. zápas',
-        '└─ hráš proti prehre zo zápasu medzi:',
+        (state['m5'] && state['m6'])
+          ? '└─ hráš proti prehre zo zápasu:'
+          : '└─ hráš proti prehre zo zápasu medzi:',
         '',
         `A) víťazom: ${thirdA}`,
         'vs',
         `B) víťazom: ${thirdB}`,
         '',
-        matchupLine(thirdA, thirdB),
+        (state['m5'] && state['m6']) ? matchupLine(thirdA, thirdB) : matchupLine(thirdA, thirdB),
         '',
         line('Potenciálni súperi:', [pairText(thirdA, thirdB)]),
         '',
@@ -244,19 +244,25 @@
         line('Potenciálni súperi:', [pairText(fourthA1, fourthA2), pairText(fourthB1, fourthB2)]),
         '',
         '5. zápas',
-        '└─ hráš proti prehre zo zápasu:',
-        '• Jančok / Nemec (S1) vs Ludha / Mečiar (S4)',
+        state['m21']
+          ? `└─ hráš proti: ${fifthOpponent}`
+          : '└─ hráš proti prehre zo zápasu:',
+        state['m21'] ? '' : '• Jančok / Nemec (S1) vs Ludha / Mečiar (S4)',
         '',
-        line('Potenciálny súper:', [fifthOpponent]),
+        state['m21'] ? '' : line('Potenciálny súper:', [fifthOpponent]),
         '',
         '6. zápas',
-        '└─ hráš proti prehre zo zápasu:',
-        '• Zavadil / Maixner (S11) vs Michalovič / Patúc (S7)',
+        state['m22']
+          ? `└─ hráš proti: ${sixthOpponent}`
+          : '└─ hráš proti prehre zo zápasu:',
+        state['m22'] ? '' : '• Zavadil / Maixner (S11) vs Michalovič / Patúc (S7)',
         '',
-        line('Potenciálny súper:', [sixthOpponent]),
+        state['m22'] ? '' : line('Potenciálny súper:', [sixthOpponent]),
         '',
         '7. zápas / finále',
-        '└─ hráš proti výhre zo zápasu medzi:',
+        (state['m27'] && state['m28'])
+          ? '└─ hráš proti víťazovi zo zápasu:'
+          : '└─ hráš proti výhre zo zápasu medzi:',
         `A) výhrou: ${finalA}`,
         'vs',
         `B) výhrou: ${finalB}`,
@@ -264,7 +270,7 @@
         matchupLine(finalA, finalB),
         '',
         line('Potenciálni súperi:', [pairText(finalA, finalB)])
-      ].join('\n');
+      ].filter(Boolean).join('\n');
 
       resultEl.textContent = text;
     }
