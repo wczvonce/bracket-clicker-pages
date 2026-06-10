@@ -63,8 +63,9 @@
       border: 1px dashed #44507f;
       border-radius: 14px;
       padding: 14px;
-      line-height: 1.5;
+      line-height: 1.65;
       white-space: pre-wrap;
+      word-break: break-word;
     }
     .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
     .secondary {
@@ -172,10 +173,14 @@
     }
 
     function pairText(first, second) {
-      if (first && second) return `${first} alebo ${second}`;
+      if (first && second) return `${first} / ${second}`;
       if (first) return first;
       if (second) return second;
       return '/';
+    }
+
+    function matchupLine(a, b) {
+      return `• ${a} vs ${b}`;
     }
 
     function renderResult() {
@@ -220,6 +225,8 @@
         'vs',
         `B) víťazom: ${thirdB}`,
         '',
+        matchupLine(thirdA, thirdB),
+        '',
         line('Potenciálni súperi:', [pairText(thirdA, thirdB)]),
         '',
         '4. zápas',
@@ -227,6 +234,8 @@
         `A) víťazom z prehier: ${pairText(fourthA1, fourthA2)}`,
         'vs',
         `B) prehrou z výhier: ${pairText(fourthB1, fourthB2)}`,
+        '',
+        matchupLine(pairText(fourthA1, fourthA2), pairText(fourthB1, fourthB2)),
         '',
         line('Potenciálni súperi:', [pairText(fourthA1, fourthA2), pairText(fourthB1, fourthB2)]),
         '',
@@ -247,6 +256,8 @@
         `A) výhrou: ${finalA}`,
         'vs',
         `B) výhrou: ${finalB}`,
+        '',
+        matchupLine(finalA, finalB),
         '',
         line('Potenciálni súperi:', [pairText(finalA, finalB)])
       ].join('\n');
