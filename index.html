@@ -213,10 +213,14 @@
         '• Kilian / Červenák (S5)',
         '',
         '2. zápas',
-        '└─ hráš proti porazenému zo zápasu:',
-        '• Gréč / Žák (S13) vs Ludha / Mečiar (S4)',
+        state['m4']
+          ? `└─ hráš proti: ${secondOpponent}`
+          : '└─ hráš proti porazenému zo zápasu:',
+        state['m4']
+          ? ''
+          : '• Gréč / Žák (S13) vs Ludha / Mečiar (S4)',
         '',
-        line('Potenciálny súper:', [secondOpponent]),
+        state['m4'] ? '' : line('Potenciálny súper:', [secondOpponent]),
         '',
         '3. zápas',
         '└─ hráš proti prehre zo zápasu medzi:',
