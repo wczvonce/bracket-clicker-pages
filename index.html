@@ -1,301 +1,601 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="sk">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mini klikačka – pavúk</title>
-  <style>
-    :root {
-      --bg: #0f1220;
-      --panel: #171b2e;
-      --panel-2: #1f2540;
-      --text: #eef2ff;
-      --muted: #aab4d6;
-      --accent: #7c9cff;
-      --accent-2: #66e3b3;
-      --danger: #ff7b8a;
-      --border: #30385f;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, Segoe UI, Arial, sans-serif;
-      background: linear-gradient(180deg, #0c1020 0%, #10162b 100%);
-      color: var(--text);
-    }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 20px; }
-    h1 { margin: 0 0 8px; font-size: 28px; }
-    p.lead { margin: 0 0 18px; color: var(--muted); }
-    .grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; }
-    .card {
-      background: rgba(23,27,46,.96);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-    .match { padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); margin-bottom: 12px; }
-    .match h3 { margin: 0 0 10px; font-size: 16px; }
-    .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button.pick {
-      width: 100%;
-      padding: 12px 10px;
-      border-radius: 12px;
-      border: 1px solid #465189;
-      background: #22294b;
-      color: var(--text);
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button.pick:hover { background: #2b3560; }
-    button.pick.active { background: var(--accent); color: #081125; border-color: var(--accent); }
-    .small { font-size: 13px; color: var(--muted); }
-    .path { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
-    .chip {
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: #252d52;
-      border: 1px solid #404a7b;
-      font-size: 13px;
-    }
-    .result {
-      background: #12182d;
-      border: 1px dashed #44507f;
-      border-radius: 14px;
-      padding: 14px;
-      line-height: 1.65;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-    .secondary {
-      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: #1b2240; color: var(--text); cursor: pointer;
-    }
-    .secondary:hover { background: #232b50; }
-    code.inline { background: #0f1430; padding: 2px 6px; border-radius: 8px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pavúk – Povrazník / Madej (S12)</title>
+<style>
+ :root{
+ --bg:#0e1216;--panel:#161e27;--panel-hi:#1e2935;--line:#283541;
+ --ink:#e9eff4;--muted:#7a8a9c;--accent:#ffb02e;--accent-ink:#1a1205;
+ --win:#3ddc84;--lose:#566273;--tgt:#ffb02e;--tbd:#3b4856;
+ --mono:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+ }
+ *{box-sizing:border-box}
+ html,body{margin:0;background:var(--bg);color:var(--ink);
+ font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+ .wrap{max-width:580px;margin:0 auto;padding:18px 14px 96px}
+ header h1{font-size:1.1rem;margin:0 0 3px;letter-spacing:-.01em}
+ header h1 b{color:var(--tgt)}
+ header p{margin:0;color:var(--muted);font-size:.8rem;line-height:1.35}
+ .upload-btn{margin-top:9px;border:1px solid var(--accent);background:transparent;
+ color:var(--accent);border-radius:9px;padding:8px 12px;font-size:.82rem;font-weight:600;
+ cursor:pointer;-webkit-tap-highlight-color:transparent}
+ .upload-btn:active{transform:translateY(1px)}
+ .upload-msg{font-size:.76rem;margin-top:6px;line-height:1.4;min-height:1em}
+ .upload-msg.ok{color:var(--win)}
+ .upload-msg.err{color:var(--accent)}
+ header h1 b{color:var(--tgt)}
+ header p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.45}
+
+ .seg{display:flex;gap:6px;margin:16px 0 6px;background:var(--panel);
+ border:1px solid var(--line);border-radius:11px;padding:4px}
+ .seg button{flex:1;border:0;background:transparent;color:var(--muted);
+ padding:9px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer}
+ .seg button.on{background:var(--panel-hi);color:var(--ink)}
+
+ .round{margin:14px 0 4px}
+ .round-eyebrow{font:600 .66rem/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+ color:var(--muted);margin:0 0 9px;display:flex;align-items:center;gap:10px}
+ .round-eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+ .round-eyebrow .bk{color:var(--accent)}
+
+ .match{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+ padding:5px;margin:0 0 7px;position:relative}
+ .match.on-path{border-color:rgba(255,176,46,.45)}
+ .mid{position:absolute;top:5px;right:8px;font:600 .52rem/1 var(--mono);
+ color:var(--muted);letter-spacing:.06em}
+ .slot{display:flex;align-items:center;gap:7px;width:100%;text-align:left;
+ background:var(--panel-hi);border:1.5px solid transparent;color:var(--ink);
+ border-radius:7px;padding:6px 8px;margin:2px 0;cursor:pointer;font-size:.82rem;line-height:1.15;
+ transition:border-color .12s,background .12s,opacity .12s;-webkit-tap-highlight-color:transparent}
+ .slot:disabled{cursor:default}
+ .slot .seed{font:600 .54rem/1 var(--mono);color:var(--muted);min-width:26px}
+ .slot .name{flex:1;font-weight:500}
+ .slot:not(:disabled):hover{border-color:var(--accent)}
+ .slot.win{border-color:var(--win);background:rgba(61,220,132,.10)}
+ .slot.win .seed{color:var(--win)}
+ .slot.lose{opacity:.4}
+ .slot.lose .name{text-decoration:line-through;text-decoration-color:var(--lose)}
+ .slot.tbd{cursor:default;color:var(--tbd)}
+ .slot.tbd .name{font-style:italic}
+ .slot.is-tgt .name{color:var(--tgt);font-weight:700}
+ .slot.is-tgt .seed{color:var(--tgt)}
+ .check{margin-left:auto;width:16px;height:16px;flex:none;color:var(--win);opacity:0;transition:opacity .12s}
+ .slot.win .check{opacity:1}
+
+ /* ===== horizontálny bracket ===== */
+ .track{margin:6px 0 22px}
+ .track-title{font-size:1.02rem;font-weight:700;margin:0 0 10px;letter-spacing:-.01em}
+ .track-scroll{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 10px;
+ scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+ .track-scroll::-webkit-scrollbar{height:6px}
+ .track-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+ .col{flex:0 0 auto;width:188px;scroll-snap-align:start;display:flex;flex-direction:column}
+ .col-head{font:600 .6rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;
+ color:var(--muted);margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+ .col-stack{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:9px}
+ .col-staggered .col-stack{gap:16px;padding-top:26px}
+ .track .match{width:100%;margin:0}
+ /* spojovacia čiara medzi stĺpcami */
+ .col:not(:last-child) .match::after{content:"";position:absolute;top:50%;right:-14px;
+ width:14px;height:1px;background:var(--line)}
+ .col:not(:first-child) .match::before{content:"";position:absolute;top:50%;left:-14px;
+ width:14px;height:1px;background:var(--line)}
+ .track .match{position:relative}
+
+ .out{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;margin-top:6px}
+ .out h2{font-size:.95rem;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+ .out h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--tgt)}
+ .out .sub{color:var(--muted);font-size:.8rem;margin:0 0 12px}
+
+ .step{border-left:2px solid var(--line);padding:0 0 2px 13px;margin:0 0 16px;position:relative}
+ .step.cur{border-left-color:var(--tgt)}
+ .step .hd{font-size:.92rem;font-weight:700;margin:0 0 4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+ .step .hd .tag{font:600 .58rem/1 var(--mono);letter-spacing:.1em;padding:3px 6px;border-radius:5px;text-transform:uppercase}
+ .tag.w{background:rgba(61,220,132,.16);color:var(--win)}
+ .tag.l{background:rgba(255,176,46,.16);color:var(--accent)}
+ .tag.q{background:var(--panel-hi);color:var(--muted)}
+ .step .body{font-size:.9rem;line-height:1.55;color:var(--ink)}
+ .step .lead{color:var(--muted)}
+ .vs-row{margin:5px 0;padding:9px 11px;background:var(--bg);border:1px solid var(--line);border-radius:9px}
+ .vs-row .opt{font-weight:600}
+ .vs-row .opt .s{font:600 .58rem/1 var(--mono);color:var(--muted)}
+ .vs-row .vs{color:var(--muted);font-size:.8rem;margin:6px 0;letter-spacing:.05em}
+ .vs-row .alt{color:var(--muted);font-weight:400}
+ .opp-final{font-weight:700;color:var(--tgt)}
+ .opp-final .s{font:600 .58rem/1 var(--mono);color:var(--muted)}
+ .verdict{margin-top:4px;padding:11px 13px;border-radius:10px;font-weight:700;font-size:.92rem}
+ .verdict.win{background:rgba(61,220,132,.12);color:var(--win)}
+ .verdict.out{background:rgba(255,176,46,.12);color:var(--accent)}
+
+ pre.raw{margin:0;white-space:pre-wrap;font:.8rem/1.55 var(--mono);color:var(--ink);
+ background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;max-height:340px;overflow:auto}
+
+ .bar{position:fixed;left:0;right:0;bottom:0;background:rgba(14,18,22,.95);
+ backdrop-filter:blur(8px);border-top:1px solid var(--line);
+ padding:11px 14px calc(11px + env(safe-area-inset-bottom));display:flex;gap:9px;max-width:580px;margin:0 auto}
+ .btn{flex:1;border:1px solid var(--line);background:var(--panel-hi);color:var(--ink);
+ border-radius:11px;padding:13px;font-size:.9rem;font-weight:600;cursor:pointer}
+ .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+ .btn.ok{background:var(--win);color:#04210f;border-color:var(--win)}
+ .btn:active{transform:translateY(1px)}
+ @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>🏐 Mini klikačka – pavúk</h1>
-    <p class="lead">Klikáš len víťaza pri zápasoch, a dole sa ti priebežne zúži vetva pre <strong>Povrazník / Madej (S12)</strong>.</p>
+<div class="wrap">
+ <header>
+ <h1>🏐 Pavúk – <b>Povrazník / Madej</b> (S12)</h1>
+ <p>16 dvojíc, dvojitá eliminácia. Klikáš víťaza každého zápasu — vetva pre S12 sa zužuje sama.</p>
+ <button class="upload-btn" id="uploadBtn">📄 Načítať PDF s výsledkami</button>
+ <input type="file" id="pdfInput" accept="application/pdf" hidden>
+ <div class="upload-msg" id="uploadMsg"></div>
+ </header>
 
-    <div class="grid">
-      <section class="card">
-        <h2>Výber výsledkov</h2>
-        <p class="small">Najprv je prednastavené, že <strong>prvý zápas prehráte</strong>, lebo práve túto vetvu si chcel riešiť. Potom si naklikáš ostatné zápasy.</p>
-        <div id="matches"></div>
-      </section>
+ <div id="view"></div>
+</div>
 
-      <section class="card">
-        <h2>Výstup</h2>
-        <div>
-          <div class="small">Aktuálna vetva:</div>
-          <div id="path" class="path"></div>
-        </div>
-        <div id="result" class="result"></div>
-        <div class="controls">
-          <button id="copyBtn" class="secondary">Kopírovať výstup</button>
-          <button id="resetBtn" class="secondary">Reset</button>
-        </div>
-        <p class="small" style="margin-top:12px;">Tip: ak budeš chcieť inú vetvu, stačí prekliknúť víťazov. Potom mi môžeš poslať len výsledný text.</p>
-      </section>
-    </div>
-  </div>
+<nav class="bar">
+ <button class="btn primary" id="copy">Kopírovať vetvu</button>
+ <button class="btn" id="default">Reálny výsledok</button>
+ <button class="btn" id="reset">Reset</button>
+</nav>
 
-  <script>
-    const team = 'Povrazník / Madej (S12)';
-    const matches = [
-      { id: 'm3', label: '1. zápas', home: 'Kilian / Červenák (S5)', away: 'Povrazník / Madej (S12)', affects: 'Určuje, či idete do vetvy L alebo W.', forced: 'home' },
-      { id: 'm4', label: 'Zápas 4', home: 'Gréč / Žák (S13)', away: 'Ludha / Mečiar (S4)', affects: 'Určuje vášho súpera v 2. zápase pri vetve L.' },
-      { id: 'm5', label: 'Zápas 5', home: 'Šíma / Lukáč (S3)', away: 'Sýkora / Korec (S14)', affects: 'Používa sa v 3. zápase pri vetve L-W.' },
-      { id: 'm6', label: 'Zápas 6', home: 'Zavadil / Maixner (S11)', away: 'Jány / Petro (S6)', affects: 'Používa sa v 3. zápase pri vetve L-W.' },
-      { id: 'm1', label: 'Zápas 1', home: 'Jančok / Nemec (S1)', away: 'Tůma / Vyoral (S16)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
-      { id: 'm2', label: 'Zápas 2', home: 'Priadka / Ptáček (S9)', away: 'Janto / Královič (S8)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
-      { id: 'm7', label: 'Zápas 7', home: 'Michalovič / Patúc (S7)', away: 'Petráš / Neštický (S10)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
-      { id: 'm8', label: 'Zápas 8', home: 'Beleš / Dančo (S15)', away: 'Marčok / Pavlinský (S2)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
-      { id: 'm21', label: 'Zápas 21', home: 'Jančok / Nemec (S1)', away: 'Ludha / Mečiar (S4)', affects: 'Používa sa neskôr v 5. zápase pri vetve L-W-W-W.' },
-      { id: 'm22', label: 'Zápas 22', home: 'Zavadil / Maixner (S11)', away: 'Michalovič / Patúc (S7)', affects: 'Používa sa neskôr v semifinálovej vetve.' },
-      { id: 'm27', label: 'Semifinále 27', home: 'Jančok / Nemec (S1)', away: 'Kilian / Červenák (S5)', affects: 'Používa sa pre finálový súper vo vetve úplného comebacku.' },
-      { id: 'm28', label: 'Semifinále 28', home: 'Zavadil / Maixner (S11)', away: 'Ludha / Mečiar (S4)', affects: 'Používa sa pre finálový súper vo vetve úplného comebacku.' },
-    ];
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+<script>
+"use strict";
 
-    const state = {};
-    for (const m of matches) state[m.id] = m.forced || null;
+/* ===== SEEDS ===== */
+const TEAMS={
+ S1:"Jančok / Nemec",S2:"Marčok / Pavlinský",S3:"Šíma / Lukáč",S4:"Ludha / Mečiar",
+ S5:"Kilian / Červenák",S6:"Jány / Petro",S7:"Michalovič / Patúc",S8:"Janto / Královič",
+ S9:"Priadka / Ptáček",S10:"Petráš / Neštický",S11:"Zavadil / Maixner",S12:"Povrazník / Madej",
+ S13:"Gréč / Žák",S14:"Sýkora / Korec",S15:"Beleš / Dančo",S16:"Tůma / Vyoral"
+};
+const TARGET="S12";
 
-    const matchesEl = document.getElementById('matches');
-    const pathEl = document.getElementById('path');
-    const resultEl = document.getElementById('result');
+/* ===== BRACKET (overené proti rozpisu, 30 zápasov) =====
+ slot = "S#" | {W:id} | {L:id} */
+const M={
+ 1:{A:"S1",B:"S16"},2:{A:"S9",B:"S8"},3:{A:"S5",B:"S12"},4:{A:"S13",B:"S4"},
+ 5:{A:"S3",B:"S14"},6:{A:"S11",B:"S6"},7:{A:"S7",B:"S10"},8:{A:"S15",B:"S2"},
+ 9:{A:{W:1},B:{W:2}},10:{A:{W:3},B:{W:4}},11:{A:{W:5},B:{W:6}},12:{A:{W:7},B:{L:8}},
+ 13:{A:{L:1},B:{L:2}},14:{A:{L:3},B:{L:4}},15:{A:{L:5},B:{L:6}},16:{A:{L:7},B:{W:8}},
+ 17:{A:{W:13},B:{L:12}},18:{A:{W:14},B:{L:11}},19:{A:{W:15},B:{L:10}},20:{A:{W:16},B:{L:9}},
+ 21:{A:{W:9},B:{W:10}},22:{A:{W:11},B:{W:12}},
+ 23:{A:{W:17},B:{W:18}},24:{A:{W:19},B:{W:20}},
+ 25:{A:{W:24},B:{L:22}},26:{A:{W:23},B:{L:21}},
+ 27:{A:{W:21},B:{W:25}},28:{A:{W:22},B:{W:26}},
+ 29:{A:{L:27},B:{L:28}},30:{A:{W:27},B:{W:28}}
+};
+/* round grouping for display */
+/* ===== COLUMN LAYOUT (horizontálne, zľava doprava) =====
+ Dve dráhy ako na oficiálnom rozpise: Hlavný pavúk (winners) a Baziny (losers). */
+const TRACKS=[
+ { title:"Hlavný pavúk", cols:[
+ {name:"1. kolo", ids:[1,2,3,4,5,6,7,8]},
+ {name:"2. kolo", ids:[9,10,11,12]},
+ {name:"3. kolo", ids:[21,22]},
+ ]},
+ { title:"Baziny (losers)", cols:[
+ {name:"Prehra 13–16", ids:[13,14,15,16]},
+ {name:"Prehra 9–12", ids:[17,18,19,20]},
+ {name:"Prehra 7–8", ids:[23,24]},
+ {name:"Prehra 5–6", ids:[25,26]},
+ ]},
+ { title:"Záver", cols:[
+ {name:"Semifinále", ids:[27,28]},
+ {name:"O 3. miesto", ids:[29]},
+ {name:"Finále", ids:[30]},
+ ]},
+];
+/* real result (winner seed) – PDF Skalica A, 6.–7.6.2026 */
+const REAL={1:"S1",2:"S8",3:"S5",4:"S4",5:"S3",6:"S11",7:"S7",8:"S2",9:"S1",10:"S4",
+ 11:"S11",12:"S7",13:"S16",14:"S12",15:"S6",16:"S2",17:"S16",18:"S12",19:"S5",20:"S2",
+ 21:"S1",22:"S11",23:"S12",24:"S5",25:"S5",26:"S4",27:"S1",28:"S11",29:"S4",30:"S1"};
 
-    function winner(id) {
-      const m = matches.find(x => x.id === id);
-      if (!m || !state[id]) return null;
-      return state[id] === 'home' ? m.home : m.away;
-    }
-    function loser(id) {
-      const m = matches.find(x => x.id === id);
-      if (!m || !state[id]) return null;
-      return state[id] === 'home' ? m.away : m.home;
-    }
+/* ===== STATE ===== */
+let WIN={}; // id -> winner seed | undefined
+let curView="bracket";
 
-    function renderMatches() {
-      matchesEl.innerHTML = '';
-      for (const m of matches) {
-        const div = document.createElement('div');
-        div.className = 'match';
-        div.innerHTML = `<h3>${m.label}</h3><div class="small" style="margin-bottom:10px">${m.affects}</div>`;
-        const teams = document.createElement('div');
-        teams.className = 'teams';
-        ['home','away'].forEach(side => {
-          const btn = document.createElement('button');
-          btn.className = 'pick' + (state[m.id] === side ? ' active' : '');
-          btn.textContent = m[side];
-          btn.onclick = () => { state[m.id] = side; renderMatches(); renderResult(); };
-          teams.appendChild(btn);
-        });
-        div.appendChild(teams);
-        matchesEl.appendChild(div);
-      }
-    }
+/* ===== CORE HELPERS (per spec) ===== */
+const winner = id => WIN[id] || null;
 
-    function line(label, arr) {
-      const items = arr.filter(Boolean).map(x => `• ${x}`).join('\n');
-      return `${label}\n${items}`;
-    }
+function resolveSlot(s){
+ if(typeof s==="string") return s; // seed
+ if(s.W) return winner(s.W); // víťaz zápasu
+ if(s.L){ // porazený zápasu
+ const w=winner(s.L); if(!w) return null;
+ const r=resolvedMatch(s.L); if(!r) return null;
+ return r.a===w ? r.b : r.a;
+ }
+ return null;
+}
+function resolvedMatch(id){
+ const m=M[id];
+ const a=resolveSlot(m.A), b=resolveSlot(m.B);
+ if(!a||!b) return null;
+ return {a,b};
+}
+function loser(id){
+ const w=winner(id); if(!w) return null;
+ const r=resolvedMatch(id); if(!r) return null;
+ return r.a===w ? r.b : r.a;
+}
+function resolvedOpponent(id,team){
+ const r=resolvedMatch(id); if(!r) return null;
+ if(r.a===team) return r.b;
+ if(r.b===team) return r.a;
+ return null;
+}
 
-    function eitherFromMatch(id, type = 'winner') {
-      const m = matches.find(x => x.id === id);
-      if (!m) return '/';
-      const selected = type === 'winner' ? winner(id) : loser(id);
-      if (selected) return selected;
-      return `${m.home} / ${m.away}`;
-    }
+/* describe a slot source for level-1/2 display:
+ returns { kind, srcId, label } where kind = 'seed'|'W'|'L' */
+function slotSource(slot){
+ if(typeof slot==="string") return {kind:"seed",seed:slot};
+ if(slot.W) return {kind:"W",srcId:slot.W};
+ if(slot.L) return {kind:"L",srcId:slot.L};
+ return null;
+}
 
-    function pairText(first, second) {
-      if (first && second) return `${first} / ${second}`;
-      if (first) return first;
-      if (second) return second;
-      return '/';
-    }
+/* For a source match, describe its two competitors as far as known.
+ Used for level-1 "víťaz X alebo Y". */
+function describeSourceMatch(id){
+ const m=M[id];
+ const a=resolveSlot(m.A), b=resolveSlot(m.B);
+ return {a,b}; // either may be null
+}
 
-    function matchupLine(a, b) {
-      return `• ${a} vs ${b}`;
-    }
+/* ===== S12 PATH =====
+ Pozbiera každý zápas, kde S12 figuruje (rozbalený slot alebo známy feeder).
+ V double-elim S12 po prehre pokračuje cez losers vetvu, takže nezastavujeme
+ na prvej prehre — zoznam rastie tak, ako sa odhaľujú ďalšie zápasy. */
+function targetPath(){
+ const path=[];
+ for(let id=1;id<=30;id++){
+ const m=M[id];
+ const r=resolvedMatch(id);
+ let involves = r && (r.a===TARGET||r.b===TARGET);
+ if(!involves){
+ const sa=resolveSlot(m.A), sb=resolveSlot(m.B);
+ involves = sa===TARGET || sb===TARGET;
+ }
+ if(involves) path.push(id);
+ }
+ return path;
+}
 
-    function resolvedLoserFromWinners(idA, idB) {
-      if (!state[idA] || !state[idB]) return null;
-      return `${winner(idA)} / ${winner(idB)}`;
-    }
+/* the *pending* next match for TARGET = first path match without a winner */
+function pendingMatchId(){
+ for(const id of targetPath()) if(!winner(id)) return id;
+ return null;
+}
 
-    function renderResult() {
-      const firstLost = loser('m3') === team;
-      const chips = [];
-      if (firstLost) chips.push('❌ 1. zápas prehra'); else chips.push('✅ 1. zápas výhra');
-      pathEl.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+/* ===== ACTIONS ===== */
+function setWinner(id,seed){
+ if(WIN[id]===seed) delete WIN[id]; else WIN[id]=seed;
+ pruneStale();
+ render();
+}
+function pruneStale(){
+ let changed=true;
+ while(changed){
+ changed=false;
+ for(let id=1;id<=30;id++){
+ if(!WIN[id]) continue;
+ // víťaza zmaž LEN ak oba sloty sú už známe a nastavený víťaz nie je ani jeden z nich
+ // (TBD slot necháme — používateľ smie predklikať víťaza skôr, než dorazí súper)
+ const a=resolveSlot(M[id].A), b=resolveSlot(M[id].B);
+ if(a!==null && b!==null && WIN[id]!==a && WIN[id]!==b){ delete WIN[id]; changed=true; }
+ }
+ }
+}
 
-      if (!firstLost) {
-        resultEl.textContent = 'Táto mini klikačka je zatiaľ spravená hlavne na vetvu: keď prvý zápas prehráte.\n\nAk chceš, dorobím aj plnú W vetvu.';
-        return;
-      }
+/* ===== RENDER ===== */
+const elView=document.getElementById("view");
+const lbl = s => s ? (TEAMS[s]||s) : null;
 
-      const secondOpponent = eitherFromMatch('m4', 'loser');
-      const thirdA = eitherFromMatch('m5', 'winner');
-      const thirdB = eitherFromMatch('m6', 'winner');
-      const thirdResolved = resolvedLoserFromWinners('m5', 'm6');
-      const fourthA1 = eitherFromMatch('m1', 'loser');
-      const fourthA2 = eitherFromMatch('m2', 'loser');
-      const fourthB1 = eitherFromMatch('m7', 'loser');
-      const fourthB2 = eitherFromMatch('m8', 'loser');
-      const fifthOpponent = eitherFromMatch('m21', 'loser');
-      const sixthOpponent = eitherFromMatch('m22', 'loser');
-      const finalA = eitherFromMatch('m27', 'winner');
-      const finalB = eitherFromMatch('m28', 'winner');
+function render(){
+ renderBracket();
+}
 
-      const text = [
-        '🏐 Povrazník / Madej (S12)',
-        '',
-        '1. zápas',
-        '• Kilian / Červenák (S5)',
-        '',
-        '2. zápas',
-        state['m4']
-          ? `└─ hráš proti: ${secondOpponent}`
-          : '└─ hráš proti porazenému zo zápasu:',
-        state['m4'] ? '' : '• Gréč / Žák (S13) vs Ludha / Mečiar (S4)',
-        '',
-        state['m4'] ? '' : line('Potenciálny súper:', [secondOpponent]),
-        '',
-        '3. zápas',
-        (state['m5'] && state['m6'])
-          ? `└─ hráš proti prehre zo zápasu: ${thirdResolved}`
-          : '└─ hráš proti prehre zo zápasu medzi:',
-        '',
-        `A) víťazom: ${thirdA}`,
-        'vs',
-        `B) víťazom: ${thirdB}`,
-        '',
-        matchupLine(thirdA, thirdB),
-        '',
-        (state['m5'] && state['m6']) ? '' : line('Potenciálni súperi:', [pairText(thirdA, thirdB)]),
-        '',
-        '4. zápas',
-        '└─ hráš proti výhre zo zápasu medzi:',
-        `A) víťazom z prehier: ${pairText(fourthA1, fourthA2)}`,
-        'vs',
-        `B) prehrou z výhier: ${pairText(fourthB1, fourthB2)}`,
-        '',
-        matchupLine(pairText(fourthA1, fourthA2), pairText(fourthB1, fourthB2)),
-        '',
-        line('Potenciálni súperi:', [pairText(fourthA1, fourthA2), pairText(fourthB1, fourthB2)]),
-        '',
-        '5. zápas',
-        state['m21']
-          ? `└─ hráš proti: ${fifthOpponent}`
-          : '└─ hráš proti prehre zo zápasu:',
-        state['m21'] ? '' : '• Jančok / Nemec (S1) vs Ludha / Mečiar (S4)',
-        '',
-        state['m21'] ? '' : line('Potenciálny súper:', [fifthOpponent]),
-        '',
-        '6. zápas',
-        state['m22']
-          ? `└─ hráš proti: ${sixthOpponent}`
-          : '└─ hráš proti prehre zo zápasu:',
-        state['m22'] ? '' : '• Zavadil / Maixner (S11) vs Michalovič / Patúc (S7)',
-        '',
-        state['m22'] ? '' : line('Potenciálny súper:', [sixthOpponent]),
-        '',
-        '7. zápas / finále',
-        (state['m27'] && state['m28'])
-          ? '└─ hráš proti víťazovi zo zápasu:'
-          : '└─ hráš proti výhre zo zápasu medzi:',
-        `A) výhrou: ${finalA}`,
-        'vs',
-        `B) výhrou: ${finalB}`,
-        '',
-        matchupLine(finalA, finalB),
-        '',
-        line('Potenciálni súperi:', [pairText(finalA, finalB)])
-      ].filter(Boolean).join('\n');
+/* ---- view: full bracket (horizontálne stĺpce, zľava doprava) ---- */
+function renderBracket(){
+ elView.innerHTML="";
+ const path=new Set(targetPath());
+ TRACKS.forEach(track=>{
+ const tEl=document.createElement("div");tEl.className="track";
+ tEl.innerHTML=`<div class="track-title">${track.title}</div>`;
+ const scroll=document.createElement("div");scroll.className="track-scroll";
+ track.cols.forEach((col,ci)=>{
+ const c=document.createElement("div");c.className="col";
+ // od 2. stĺpca pridaj vertikálne medzery, aby zápasy sedeli medzi zdrojmi
+ if(ci>0) c.classList.add("col-staggered");
+ c.innerHTML=`<div class="col-head">${col.name}</div>`;
+ const stack=document.createElement("div");stack.className="col-stack";
+ col.ids.forEach(id=>stack.appendChild(matchEl(id,path.has(id))));
+ c.appendChild(stack);
+ scroll.appendChild(c);
+ });
+ tEl.appendChild(scroll);
+ elView.appendChild(tEl);
+ });
+}
+function slotBtn(id,which){
+ const slot=M[id][which];
+ const seed=resolveSlot(slot);
+ const b=document.createElement("button");b.className="slot";
+ if(seed===null){
+ b.classList.add("tbd");b.disabled=true;
+ const src=slotSource(slot);
+ const hint = src.kind==="W"?`víťaz Z${src.srcId}`:src.kind==="L"?`porazený Z${src.srcId}`:"čaká sa";
+ b.innerHTML=`<span class="seed">—</span><span class="name">${hint}</span>`;
+ return b;
+ }
+ b.innerHTML=`<span class="seed">${seed}</span><span class="name">${lbl(seed)}</span>`+
+ `<svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>`;
+ if(seed===TARGET)b.classList.add("is-tgt");
+ if(WIN[id]===seed)b.classList.add("win");
+ else if(WIN[id])b.classList.add("lose");
+ b.onclick=()=>setWinner(id,seed);
+ return b;
+}
+function matchEl(id,onPath){
+ const d=document.createElement("div");d.className="match"+(onPath?" on-path":"");
+ d.innerHTML=`<span class="mid">Z${id}</span>`;
+ d.appendChild(slotBtn(id,"A"));d.appendChild(slotBtn(id,"B"));
+ return d;
+}
 
-      resultEl.textContent = text;
-    }
+/* ---- view: S12 branch (the heart of the app) ---- */
+function renderPath(){
+ const path=targetPath();
+ const wrap=document.createElement("div");wrap.className="out";
+ wrap.innerHTML=`<h2><span class="dot"></span>Vetva pre Povrazník / Madej</h2>`+
+ `<p class="sub">Proti komu hráš a z ktorého zápasu súper príde. Klik vo „Celý pavúk" vetvu zúži.</p>`;
 
-    document.getElementById('copyBtn').onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(resultEl.textContent);
-        alert('Skopírované ✅');
-      } catch {
-        alert('Kopírovanie zlyhalo, skús Ctrl+C.');
-      }
-    };
-    document.getElementById('resetBtn').onclick = () => {
-      for (const m of matches) state[m.id] = m.forced || null;
-      renderMatches(); renderResult();
-    };
+ if(path.length===0){
+ wrap.innerHTML+=`<div class="step"><div class="body lead">Začni klikať víťazov v záložke „Celý pavúk".</div></div>`;
+ elView.innerHTML="";elView.appendChild(wrap);return;
+ }
 
-    renderMatches();
-    renderResult();
-  </script>
+ const pending=pendingMatchId();
+ path.forEach(id=>{
+ wrap.appendChild(stepEl(id,id===pending));
+ });
+
+ // verdict — S12 je v double-elim vyradený až po druhej prehre
+ const losses = path.filter(id=>{const w=winner(id);return w&&w!==TARGET;});
+ const last=path[path.length-1];
+ const lastW=winner(last);
+ if(lastW===TARGET && last===30){
+ wrap.appendChild(div(`verdict win`,`🏆 Povrazník / Madej — víťaz turnaja`));
+ }else if(losses.length>=2){
+ const elimId=losses[losses.length-1];
+ wrap.appendChild(div(`verdict out`,`Koniec — S12 vyradený (2. prehra, proti ${lbl(resolvedOpponent(elimId,TARGET))})`));
+ }else if(losses.length===1 && path.every(id=>winner(id))){
+ // jedna prehra, všetko doklikané a žiadny ďalší zápas sa neodhalil → čaká na rozpis vyššie
+ wrap.appendChild(div(`verdict out`,`S12 je v losers vetve (1 prehra) — doklikaj zdrojové zápasy pre ďalšieho súpera`));
+ }
+ elView.innerHTML="";elView.appendChild(wrap);
+}
+
+function div(cls,html){const d=document.createElement("div");d.className=cls;d.innerHTML=html;return d;}
+
+/* one step in S12 branch with 3-level opponent resolution */
+function stepEl(id,isCurrent){
+ const s=document.createElement("div");s.className="step"+(isCurrent?" cur":"");
+ const w=winner(id);
+ const result = w===TARGET ? "w" : w ? "l" : "q";
+ const tagTxt = w===TARGET ? "výhra" : w ? "prehra" : "hráš";
+ s.innerHTML=`<div class="hd"><span class="tag ${result}">${tagTxt}</span></div>`;
+ const body=document.createElement("div");body.className="body";
+
+ // figure out which slot is the opponent (the non-target slot)
+ const m=M[id];
+ const aSeed=resolveSlot(m.A), bSeed=resolveSlot(m.B);
+ const tgtIsA = aSeed===TARGET;
+ const oppSlot = tgtIsA ? m.B : m.A;
+ const oppSeed = tgtIsA ? bSeed : aSeed;
+
+ if(oppSeed){
+ // LEVEL 3 — exact opponent known
+ body.innerHTML=`<span class="lead">hráš proti:</span>`+
+ `<div class="vs-row"><span class="opp-final"><span class="s">${oppSeed}</span> ${lbl(oppSeed)}</span></div>`;
+ if(w) body.innerHTML+=`<div class="lead" style="margin-top:6px">výsledok: `+
+ (w===TARGET?`<b style="color:var(--win)">výhra S12</b>`:`<b style="color:var(--accent)">vyhral ${lbl(oppSeed)}</b>`)+`</div>`;
+ }else{
+ // opponent comes from a source match → level 1 or 2
+ const src=slotSource(oppSlot); // {kind:'W'|'L', srcId}
+ const sm=describeSourceMatch(src.srcId);
+ const kindWord = src.kind==="W" ? "víťaza" : "prehre";
+ const fromWord = src.kind==="W" ? "víťaz" : "porazený";
+
+ if(sm.a && sm.b){
+ // LEVEL 2 — both competitors of source match known, result not yet
+ body.innerHTML=`<span class="lead">hráš proti ${kindWord} zo zápasu:</span>`+
+ `<div class="vs-row">`+
+ `<span class="opt"><span class="s">${sm.a}</span> ${lbl(sm.a)}</span>`+
+ `<div class="vs">vs</div>`+
+ `<span class="opt"><span class="s">${sm.b}</span> ${lbl(sm.b)}</span>`+
+ `</div>`;
+ }else{
+ // LEVEL 1 — source match competitors not fully known: show feeders broadly
+ const fa=feederDesc(M[src.srcId].A);
+ const fb=feederDesc(M[src.srcId].B);
+ body.innerHTML=`<span class="lead">hráš proti ${kindWord} zo zápasu medzi:</span>`+
+ `<div class="vs-row">`+
+ `<div class="opt">A) ${fa}</div>`+
+ `<div class="vs">vs</div>`+
+ `<div class="opt">B) ${fb}</div>`+
+ `</div>`;
+ }
+ }
+ s.appendChild(body);
+ return s;
+}
+
+/* describe a feeder slot for level-1 (e.g. "víťaz: Šíma/Lukáč (S3) alebo Sýkora/Korec (S14)") */
+function feederDesc(slot){
+ const seed=resolveSlot(slot);
+ if(seed) return `<span class="s">${seed}</span> ${lbl(seed)}`;
+ const src=slotSource(slot);
+ if(!src) return "TBD";
+ const sm=describeSourceMatch(src.srcId);
+ const word = src.kind==="W"?"víťaz":"porazený";
+ const a = sm.a ? `<span class="s">${sm.a}</span> ${lbl(sm.a)}` : "TBD";
+ const b = sm.b ? `<span class="s">${sm.b}</span> ${lbl(sm.b)}` : "TBD";
+ return `<span class="alt">${word}:</span> ${a} <span class="alt">alebo</span> ${b}`;
+}
+
+/* ---- view: raw copyable text ---- */
+function buildText(){
+ const path=targetPath();
+ if(!path.length) return "Žiadne kliky.";
+ const out=["Vetva — Povrazník / Madej (S12)",""];
+ path.forEach(id=>{
+ const m=M[id];
+ const aSeed=resolveSlot(m.A), bSeed=resolveSlot(m.B);
+ const tgtIsA=aSeed===TARGET;
+ const oppSlot=tgtIsA?m.B:m.A; const oppSeed=tgtIsA?bSeed:aSeed;
+ const w=winner(id);
+ const tag = w===TARGET?"[výhra]":w?"[prehra]":"[hráš]";
+ if(oppSeed){
+ out.push(`${tag} proti: ${oppSeed} ${lbl(oppSeed)}`);
+ }else{
+ const src=slotSource(oppSlot);
+ const sm=describeSourceMatch(src.srcId);
+ const kw = src.kind==="W"?"víťazovi":"prehre";
+ if(sm.a&&sm.b){
+ out.push(`${tag} proti ${kw} zo zápasu: ${sm.a} ${lbl(sm.a)} vs ${sm.b} ${lbl(sm.b)}`);
+ }else{
+ out.push(`${tag} proti ${kw} zo zápasu medzi vetvami (zatiaľ neurčené)`);
+ }
+ }
+ });
+ const losses=path.filter(id=>{const w=winner(id);return w&&w!==TARGET;});
+ const last=path[path.length-1],lw=winner(last);
+ if(lw===TARGET&&last===30) out.push("","→ VÍŤAZ TURNAJA 🏆");
+ else if(losses.length>=2){const e=losses[losses.length-1];out.push("",`→ S12 vyradený – 2. prehra (proti ${lbl(resolvedOpponent(e,TARGET))})`);}
+ return out.join("\n");
+}
+function renderRaw(){
+ const pre=document.createElement("pre");pre.className="raw";pre.textContent=buildText();
+ elView.innerHTML="";elView.appendChild(pre);
+}
+
+/* ===== BUTTONS ===== */
+document.getElementById("copy").onclick=async()=>{
+ const t=buildText();
+ try{await navigator.clipboard.writeText(t);}catch{
+ const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();}
+ const b=document.getElementById("copy"),o=b.textContent;
+ b.textContent="Skopírované ✓";b.classList.add("ok");
+ setTimeout(()=>{b.textContent=o;b.classList.remove("ok");},1300);
+};
+document.getElementById("reset").onclick=()=>{WIN={};render();};
+document.getElementById("default").onclick=()=>{WIN={...REAL};render();};
+
+/* ===== PDF UPLOAD & PARSING ===== */
+const uMsg=document.getElementById("uploadMsg");
+function showMsg(txt,cls){uMsg.textContent=txt;uMsg.className="upload-msg "+(cls||"");}
+
+document.getElementById("uploadBtn").onclick=()=>document.getElementById("pdfInput").click();
+document.getElementById("pdfInput").onchange=async(e)=>{
+ const file=e.target.files[0]; if(!file) return;
+ const lib = window.pdfjsLib || window["pdfjs-dist/build/pdf"];
+ if(!lib){ showMsg("Knižnica na čítanie PDF sa nenačítala (skontroluj pripojenie na internet a skús znova).","err"); e.target.value=""; return; }
+ if(lib.GlobalWorkerOptions && !lib.GlobalWorkerOptions.workerSrc){
+ lib.GlobalWorkerOptions.workerSrc="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
+ }
+ showMsg("Načítavam PDF…","");
+ try{
+ const buf=await file.arrayBuffer();
+ const pdf=await lib.getDocument({data:buf}).promise;
+ let text="";
+ for(let p=1;p<=pdf.numPages;p++){
+ const page=await pdf.getPage(p);
+ const tc=await page.getTextContent();
+ // reconstruct lines by y-position
+ const byLine={};
+ tc.items.forEach(it=>{
+ const y=Math.round(it.transform[5]);
+ (byLine[y]??=[]).push([it.transform[4],it.str]);
+ });
+ Object.keys(byLine).sort((a,b)=>b-a).forEach(y=>{
+ const line=byLine[y].sort((a,b)=>a[0]-b[0]).map(x=>x[1]).join(" ");
+ text+=line+"\n";
+ });
+ }
+ const res=parseDraw(text);
+ if(res.rows.length===0){showMsg("V PDF som nenašiel tabuľku zápasov. Skontroluj, či je to správny rozpis.","err");return;}
+ applyParsed(res);
+ const filled=Object.keys(WIN).length;
+ showMsg(`Načítaných ${res.rows.length} zápasov, ${filled} s výsledkom. Mená dvojíc aktualizované.`,"ok");
+ render();
+ }catch(err){
+ console.error(err);
+ showMsg("Chyba pri čítaní PDF: "+err.message,"err");
+ }finally{ e.target.value=""; }
+};
+
+/* parse the results table out of plain text */
+function parseDraw(text){
+ const lines=text.split("\n");
+ const rows=[]; // {num,sA,sB,winner,nameA,nameB}
+ for(const ln of lines){
+ // riadok zápasu: začína číslom 1–30, obsahuje dva (S#) a "vs"
+ const head=ln.match(/^\s*(\d{1,2})\s+\S+\s+\d{1,2}:\d{2}\s+\S+\s+(.*)$/);
+ if(!head) continue;
+ const num=+head[1]; if(num<1||num>30) continue;
+ const seeds=[...ln.matchAll(/\(S(\d+)\)/g)].map(x=>+x[1]);
+ if(seeds.length<2) continue;
+ // mená: text pred každým (S#)
+ const parts=ln.split(" vs ");
+ const nameA=extractName(parts[0]);
+ const nameB=extractName(parts[1]||"");
+ // výsledok: prvé "X:Y" po druhom seede
+ const afterB=(parts[1]||"");
+ const rm=afterB.match(/\(S\d+\)\s+(\d):(\d)/);
+ let winner=null;
+ if(rm){const a=+rm[1],b=+rm[2]; if(a!==b) winner = a>b ? seeds[0] : seeds[1];}
+ rows.push({num,sA:seeds[0],sB:seeds[1],winner,nameA,nameB});
+ }
+ return {rows};
+}
+/* meno dvojice = text pred (S#), bez výsledku a rozhodcu */
+function extractName(chunk){
+ let s=chunk;
+ // odrež všetko od prvého skóre/výsledku ďalej (napr. "2:1 13:21 ...")
+ s=s.replace(/\s+\d:\d\b.*$/,"");
+ // odstráň seed a národnosť
+ s=s.replace(/\(S\d+\)/g,"").replace(/\((CZE|PL|SVK|AUT|GER|POL|CZ)\)/gi,"");
+ // odsekni úvodné "Č Kolo Čas Ihr" (len pri prvom slote riadku)
+ s=s.replace(/^\s*\d{1,2}\s+\S+\s+\d{1,2}:\d{2}\s+\S+\s+/,"");
+ // normalizuj medzery
+ return s.replace(/\s+/g," ").trim();
+}
+
+function applyParsed(res){
+ WIN={};
+ // aktualizuj mená podľa seedov (z ktoréhokoľvek zápasu, kde sa seed objaví)
+ res.rows.forEach(r=>{
+ if(r.nameA) TEAMS["S"+r.sA]=r.nameA;
+ if(r.nameB) TEAMS["S"+r.sB]=r.nameB;
+ });
+ // nastav víťazov len pre náš model M (kontrola, že seedy zápasu sedia)
+ res.rows.forEach(r=>{
+ if(!r.winner) return;
+ if(!M[r.num]) return;
+ WIN[r.num]=("S"+r.winner);
+ });
+ pruneStale();
+}
+
+/* ===== INIT: start empty, with first match preset to S12 loss (per original brief) ===== */
+WIN={3:"S5"}; // S12 prehráva prvý zápas (default)
+render();
+</script>
 </body>
 </html>
