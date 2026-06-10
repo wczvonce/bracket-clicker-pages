@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini klikačka – pavúk</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --panel: #171b2e;
+      --panel-2: #1f2540;
+      --text: #eef2ff;
+      --muted: #aab4d6;
+      --accent: #7c9cff;
+      --accent-2: #66e3b3;
+      --danger: #ff7b8a;
+      --border: #30385f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: linear-gradient(180deg, #0c1020 0%, #10162b 100%);
+      color: var(--text);
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 20px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p.lead { margin: 0 0 18px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; }
+    .card {
+      background: rgba(23,27,46,.96);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .match { padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel-2); margin-bottom: 12px; }
+    .match h3 { margin: 0 0 10px; font-size: 16px; }
+    .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button.pick {
+      width: 100%;
+      padding: 12px 10px;
+      border-radius: 12px;
+      border: 1px solid #465189;
+      background: #22294b;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.pick:hover { background: #2b3560; }
+    button.pick.active { background: var(--accent); color: #081125; border-color: var(--accent); }
+    .small { font-size: 13px; color: var(--muted); }
+    .path { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+    .chip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #252d52;
+      border: 1px solid #404a7b;
+      font-size: 13px;
+    }
+    .result {
+      background: #12182d;
+      border: 1px dashed #44507f;
+      border-radius: 14px;
+      padding: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .secondary {
+      padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: #1b2240; color: var(--text); cursor: pointer;
+    }
+    .secondary:hover { background: #232b50; }
+    code.inline { background: #0f1430; padding: 2px 6px; border-radius: 8px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🏐 Mini klikačka – pavúk</h1>
+    <p class="lead">Klikáš len víťaza pri zápasoch, a dole sa ti priebežne zúži vetva pre <strong>Povrazník / Madej (S12)</strong>.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Výber výsledkov</h2>
+        <p class="small">Najprv je prednastavené, že <strong>prvý zápas prehráte</strong>, lebo práve túto vetvu si chcel riešiť. Potom si naklikáš ostatné zápasy.</p>
+        <div id="matches"></div>
+      </section>
+
+      <section class="card">
+        <h2>Výstup</h2>
+        <div>
+          <div class="small">Aktuálna vetva:</div>
+          <div id="path" class="path"></div>
+        </div>
+        <div id="result" class="result"></div>
+        <div class="controls">
+          <button id="copyBtn" class="secondary">Kopírovať výstup</button>
+          <button id="resetBtn" class="secondary">Reset</button>
+        </div>
+        <p class="small" style="margin-top:12px;">Tip: ak budeš chcieť inú vetvu, stačí prekliknúť víťazov. Potom mi môžeš poslať len výsledný text.</p>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const team = 'Povrazník / Madej (S12)';
+    const matches = [
+      { id: 'm3', label: '1. zápas', home: 'Kilian / Červenák (S5)', away: 'Povrazník / Madej (S12)', affects: 'Určuje, či idete do vetvy L alebo W.', forced: 'home' },
+      { id: 'm4', label: 'Zápas 4', home: 'Gréč / Žák (S13)', away: 'Ludha / Mečiar (S4)', affects: 'Určuje vášho súpera v 2. zápase pri vetve L.' },
+      { id: 'm5', label: 'Zápas 5', home: 'Šíma / Lukáč (S3)', away: 'Sýkora / Korec (S14)', affects: 'Používa sa v 3. zápase pri vetve L-W.' },
+      { id: 'm6', label: 'Zápas 6', home: 'Zavadil / Maixner (S11)', away: 'Jány / Petro (S6)', affects: 'Používa sa v 3. zápase pri vetve L-W.' },
+      { id: 'm1', label: 'Zápas 1', home: 'Jančok / Nemec (S1)', away: 'Tůma / Vyoral (S16)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
+      { id: 'm2', label: 'Zápas 2', home: 'Priadka / Ptáček (S9)', away: 'Janto / Královič (S8)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
+      { id: 'm7', label: 'Zápas 7', home: 'Michalovič / Patúc (S7)', away: 'Petráš / Neštický (S10)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
+      { id: 'm8', label: 'Zápas 8', home: 'Beleš / Dančo (S15)', away: 'Marčok / Pavlinský (S2)', affects: 'Používa sa neskôr v 4. zápase pri vetve L-W-W.' },
+      { id: 'm21', label: 'Zápas 21', home: 'Jančok / Nemec (S1)', away: 'Ludha / Mečiar (S4)', affects: 'Používa sa neskôr v 5. zápase pri vetve L-W-W-W.' },
+      { id: 'm22', label: 'Zápas 22', home: 'Zavadil / Maixner (S11)', away: 'Michalovič / Patúc (S7)', affects: 'Používa sa neskôr v semifinálovej vetve.' },
+      { id: 'm27', label: 'Semifinále 27', home: 'Jančok / Nemec (S1)', away: 'Kilian / Červenák (S5)', affects: 'Používa sa pre finálový súper vo vetve úplného comebacku.' },
+      { id: 'm28', label: 'Semifinále 28', home: 'Zavadil / Maixner (S11)', away: 'Ludha / Mečiar (S4)', affects: 'Používa sa pre finálový súper vo vetve úplného comebacku.' },
+    ];
+
+    const state = {};
+    for (const m of matches) state[m.id] = m.forced || null;
+
+    const matchesEl = document.getElementById('matches');
+    const pathEl = document.getElementById('path');
+    const resultEl = document.getElementById('result');
+
+    function winner(id) {
+      const m = matches.find(x => x.id === id);
+      if (!m || !state[id]) return null;
+      return state[id] === 'home' ? m.home : m.away;
+    }
+    function loser(id) {
+      const m = matches.find(x => x.id === id);
+      if (!m || !state[id]) return null;
+      return state[id] === 'home' ? m.away : m.home;
+    }
+
+    function renderMatches() {
+      matchesEl.innerHTML = '';
+      for (const m of matches) {
+        const div = document.createElement('div');
+        div.className = 'match';
+        div.innerHTML = `<h3>${m.label}</h3><div class="small" style="margin-bottom:10px">${m.affects}</div>`;
+        const teams = document.createElement('div');
+        teams.className = 'teams';
+        ['home','away'].forEach(side => {
+          const btn = document.createElement('button');
+          btn.className = 'pick' + (state[m.id] === side ? ' active' : '');
+          btn.textContent = m[side];
+          btn.onclick = () => { state[m.id] = side; renderMatches(); renderResult(); };
+          teams.appendChild(btn);
+        });
+        div.appendChild(teams);
+        matchesEl.appendChild(div);
+      }
+    }
+
+    function line(label, arr) {
+      const items = arr.filter(Boolean).map(x => `• ${x}`).join('\n');
+      return `${label}\n${items}`;
+    }
+
+    function renderResult() {
+      const firstLost = loser('m3') === team;
+      const chips = [];
+      if (firstLost) chips.push('❌ 1. zápas prehra'); else chips.push('✅ 1. zápas výhra');
+      pathEl.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+
+      if (!firstLost) {
+        resultEl.textContent = 'Táto mini klikačka je zatiaľ spravená hlavne na vetvu: keď prvý zápas prehráte.\n\nAk chceš, dorobím aj plnú W vetvu.';
+        return;
+      }
+
+      const secondOpponent = loser('m4');
+      const thirdA = winner('m5');
+      const thirdB = winner('m6');
+      const fourthA1 = loser('m1');
+      const fourthA2 = loser('m2');
+      const fourthB1 = loser('m7');
+      const fourthB2 = loser('m8');
+      const fifthOpponent = loser('m21');
+      const sixthOpponent = loser('m22');
+      const finalA = winner('m27');
+      const finalB = winner('m28');
+
+      const text = [
+        '🏐 Povrazník / Madej (S12)',
+        '',
+        '1. zápas',
+        '• Kilian / Červenák (S5)',
+        '',
+        '2. zápas',
+        '└─ hráš proti porazenému zo zápasu:',
+        '• Gréč / Žák (S13) vs Ludha / Mečiar (S4)',
+        '',
+        line('Potenciálny súper:', [secondOpponent]),
+        '',
+        '3. zápas',
+        '└─ hráš proti prehre zo zápasu medzi:',
+        '',
+        `A) víťazom: ${thirdA || '...'} `,
+        'vs',
+        `B) víťazom: ${thirdB || '...'}`,
+        '',
+        line('Potenciálni súperi:', [thirdA, thirdB]),
+        '',
+        '4. zápas',
+        '└─ hráš proti výhre zo zápasu medzi:',
+        `A) víťazom z prehier: ${fourthA1 || '...'} alebo ${fourthA2 || '...'}`,
+        'vs',
+        `B) prehrou z výhier: ${fourthB1 || '...'} alebo ${fourthB2 || '...'}`,
+        '',
+        line('Potenciálni súperi:', [fourthA1, fourthA2, fourthB1, fourthB2]),
+        '',
+        '5. zápas',
+        '└─ hráš proti prehre zo zápasu:',
+        '• Jančok / Nemec (S1) vs Ludha / Mečiar (S4)',
+        '',
+        line('Potenciálny súper:', [fifthOpponent]),
+        '',
+        '6. zápas',
+        '└─ hráš proti prehre zo zápasu:',
+        '• Zavadil / Maixner (S11) vs Michalovič / Patúc (S7)',
+        '',
+        line('Potenciálny súper:', [sixthOpponent]),
+        '',
+        '7. zápas / finále',
+        '└─ hráš proti výhre zo zápasu medzi:',
+        `A) výhrou: ${finalA || '...'}`,
+        'vs',
+        `B) výhrou: ${finalB || '...'}`,
+        '',
+        line('Potenciálni súperi:', [finalA, finalB])
+      ].join('\n');
+
+      resultEl.textContent = text;
+    }
+
+    document.getElementById('copyBtn').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(resultEl.textContent);
+        alert('Skopírované ✅');
+      } catch {
+        alert('Kopírovanie zlyhalo, skús Ctrl+C.');
+      }
+    };
+    document.getElementById('resetBtn').onclick = () => {
+      for (const m of matches) state[m.id] = m.forced || null;
+      renderMatches(); renderResult();
+    };
+
+    renderMatches();
+    renderResult();
+  </script>
+</body>
+</html>
