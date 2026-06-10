@@ -183,6 +183,11 @@
       return `• ${a} vs ${b}`;
     }
 
+    function resolvedLoserFromWinners(idA, idB) {
+      if (!state[idA] || !state[idB]) return null;
+      return `${winner(idA)} / ${winner(idB)}`;
+    }
+
     function renderResult() {
       const firstLost = loser('m3') === team;
       const chips = [];
@@ -197,6 +202,7 @@
       const secondOpponent = eitherFromMatch('m4', 'loser');
       const thirdA = eitherFromMatch('m5', 'winner');
       const thirdB = eitherFromMatch('m6', 'winner');
+      const thirdResolved = resolvedLoserFromWinners('m5', 'm6');
       const fourthA1 = eitherFromMatch('m1', 'loser');
       const fourthA2 = eitherFromMatch('m2', 'loser');
       const fourthB1 = eitherFromMatch('m7', 'loser');
@@ -222,16 +228,16 @@
         '',
         '3. zápas',
         (state['m5'] && state['m6'])
-          ? '└─ hráš proti prehre zo zápasu:'
+          ? `└─ hráš proti prehre zo zápasu: ${thirdResolved}`
           : '└─ hráš proti prehre zo zápasu medzi:',
         '',
         `A) víťazom: ${thirdA}`,
         'vs',
         `B) víťazom: ${thirdB}`,
         '',
-        (state['m5'] && state['m6']) ? matchupLine(thirdA, thirdB) : matchupLine(thirdA, thirdB),
+        matchupLine(thirdA, thirdB),
         '',
-        line('Potenciálni súperi:', [pairText(thirdA, thirdB)]),
+        (state['m5'] && state['m6']) ? '' : line('Potenciálni súperi:', [pairText(thirdA, thirdB)]),
         '',
         '4. zápas',
         '└─ hráš proti výhre zo zápasu medzi:',
