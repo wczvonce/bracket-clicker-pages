@@ -163,6 +163,21 @@
       return `${label}\n${items}`;
     }
 
+    function eitherFromMatch(id, type = 'winner') {
+      const m = matches.find(x => x.id === id);
+      if (!m) return '/';
+      const selected = type === 'winner' ? winner(id) : loser(id);
+      if (selected) return selected;
+      return `${m.home} / ${m.away}`;
+    }
+
+    function pairText(first, second) {
+      if (first && second) return `${first} alebo ${second}`;
+      if (first) return first;
+      if (second) return second;
+      return '/';
+    }
+
     function renderResult() {
       const firstLost = loser('m3') === team;
       const chips = [];
@@ -174,17 +189,17 @@
         return;
       }
 
-      const secondOpponent = loser('m4');
-      const thirdA = winner('m5');
-      const thirdB = winner('m6');
-      const fourthA1 = loser('m1');
-      const fourthA2 = loser('m2');
-      const fourthB1 = loser('m7');
-      const fourthB2 = loser('m8');
-      const fifthOpponent = loser('m21');
-      const sixthOpponent = loser('m22');
-      const finalA = winner('m27');
-      const finalB = winner('m28');
+      const secondOpponent = eitherFromMatch('m4', 'loser');
+      const thirdA = eitherFromMatch('m5', 'winner');
+      const thirdB = eitherFromMatch('m6', 'winner');
+      const fourthA1 = eitherFromMatch('m1', 'loser');
+      const fourthA2 = eitherFromMatch('m2', 'loser');
+      const fourthB1 = eitherFromMatch('m7', 'loser');
+      const fourthB2 = eitherFromMatch('m8', 'loser');
+      const fifthOpponent = eitherFromMatch('m21', 'loser');
+      const sixthOpponent = eitherFromMatch('m22', 'loser');
+      const finalA = eitherFromMatch('m27', 'winner');
+      const finalB = eitherFromMatch('m28', 'winner');
 
       const text = [
         '🏐 Povrazník / Madej (S12)',
@@ -201,19 +216,19 @@
         '3. zápas',
         '└─ hráš proti prehre zo zápasu medzi:',
         '',
-        `A) víťazom: ${thirdA || '...'} `,
+        `A) víťazom: ${thirdA}`,
         'vs',
-        `B) víťazom: ${thirdB || '...'}`,
+        `B) víťazom: ${thirdB}`,
         '',
-        line('Potenciálni súperi:', [thirdA, thirdB]),
+        line('Potenciálni súperi:', [pairText(thirdA, thirdB)]),
         '',
         '4. zápas',
         '└─ hráš proti výhre zo zápasu medzi:',
-        `A) víťazom z prehier: ${fourthA1 || '...'} alebo ${fourthA2 || '...'}`,
+        `A) víťazom z prehier: ${pairText(fourthA1, fourthA2)}`,
         'vs',
-        `B) prehrou z výhier: ${fourthB1 || '...'} alebo ${fourthB2 || '...'}`,
+        `B) prehrou z výhier: ${pairText(fourthB1, fourthB2)}`,
         '',
-        line('Potenciálni súperi:', [fourthA1, fourthA2, fourthB1, fourthB2]),
+        line('Potenciálni súperi:', [pairText(fourthA1, fourthA2), pairText(fourthB1, fourthB2)]),
         '',
         '5. zápas',
         '└─ hráš proti prehre zo zápasu:',
@@ -229,11 +244,11 @@
         '',
         '7. zápas / finále',
         '└─ hráš proti výhre zo zápasu medzi:',
-        `A) výhrou: ${finalA || '...'}`,
+        `A) výhrou: ${finalA}`,
         'vs',
-        `B) výhrou: ${finalB || '...'}`,
+        `B) výhrou: ${finalB}`,
         '',
-        line('Potenciálni súperi:', [finalA, finalB])
+        line('Potenciálni súperi:', [pairText(finalA, finalB)])
       ].join('\n');
 
       resultEl.textContent = text;
