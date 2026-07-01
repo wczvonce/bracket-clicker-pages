@@ -128,8 +128,8 @@
  <header>
  <h1>🏐 Pavúk – <b>Povrazník / Madej</b> (S12)</h1>
  <p>16 dvojíc, dvojitá eliminácia. Klikáš víťaza každého zápasu — vetva pre S12 sa zužuje sama.</p>
- <button class="upload-btn" id="uploadBtn">📄 Načítať PDF s výsledkami</button>
- <input type="file" id="pdfInput" accept="application/pdf" hidden>
+ <button class="upload-btn" id="uploadBtn">📄 Načítať výsledky (PDF alebo Excel)</button>
+ <input type="file" id="pdfInput" accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
  <div class="upload-msg" id="uploadMsg"></div>
  </header>
 
@@ -143,6 +143,7 @@
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 "use strict";
 
@@ -504,6 +505,8 @@ function showMsg(txt,cls){uMsg.textContent=txt;uMsg.className="upload-msg "+(cls
 document.getElementById("uploadBtn").onclick=()=>document.getElementById("pdfInput").click();
 document.getElementById("pdfInput").onchange=async(e)=>{
  const file=e.target.files[0]; if(!file) return;
+ const isXlsx = /\.xlsx$/i.test(file.name) || file.type==="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+ if(isXlsx){ await handleXlsx(file); e.target.value=""; return; }
  const lib = window.pdfjsLib || window["pdfjs-dist/build/pdf"];
  if(!lib){ showMsg("Knižnica na čítanie PDF sa nenačítala (skontroluj pripojenie na internet a skús znova).","err"); e.target.value=""; return; }
  if(lib.GlobalWorkerOptions && !lib.GlobalWorkerOptions.workerSrc){
@@ -539,6 +542,76 @@ document.getElementById("pdfInput").onchange=async(e)=>{
  showMsg("Chyba pri čítaní PDF: "+err.message,"err");
  }finally{ e.target.value=""; }
 };
+
+/* ===== EXCEL (.xlsx) UPLOAD & PARSING =====
+ Číta hárok „Main Draw" z rozpisu. Pre každý zápas 1–30 zoberie výsledok
+ (stĺpec „Výsledok" ako 2:0 / 2:1, alebo dopočíta zo skóre setov) a určí,
+ či vyhral Tím 1 (slot A) alebo Tím 2 (slot B). Víťaza mapuje cez model M
+ podľa čísla zápasu — funguje aj pre neskoršie kolá, kde Excel ukazuje len
+ značky W7/L8, lebo mapujeme podľa čísla zápasu, nie podľa mena. */
+async function handleXlsx(file){
+ if(!window.XLSX){ showMsg("Knižnica na čítanie Excelu sa nenačítala (skontroluj pripojenie na internet a skús znova).","err"); return; }
+ showMsg("Načítavam Excel…","");
+ try{
+ const buf=await file.arrayBuffer();
+ const wb=XLSX.read(buf,{type:"array"});
+ const res=parseXlsx(wb);
+ if(res.rows.length===0){ showMsg("V Exceli som nenašiel tabuľku zápasov (hárok Main Draw). Skontroluj, či je to správny rozpis.","err"); return; }
+ applyXlsx(res);
+ const filled=Object.keys(WIN).length;
+ showMsg(`Načítaných ${res.rows.length} zápasov, ${filled} s výsledkom. Mená dvojíc aktualizované.`,"ok");
+ render();
+ }catch(err){
+ console.error(err);
+ showMsg("Chyba pri čítaní Excelu: "+err.message,"err");
+ }
+}
+function cleanTeamName(s){
+ return String(s||"").replace(/\(S\d+\)/g,"")
+ .replace(/\((?:CZE|SVK|POL|AUT|GER|CZ|PL|SK|HUN|UKR|SVN|ITA)\)/gi,"")
+ .replace(/\s+/g," ").trim();
+}
+/* z výsledkovej bunky / skóre setov urči víťaznú stranu 'A' | 'B' | null */
+function winnerSideFromRow(row){
+ const res=String(row[8]||"").trim();               // stĺpec I – „Výsledok"
+ let m=res.match(/^(\d+)\s*[:\-]\s*(\d+)$/);
+ if(m){ const a=+m[1],b=+m[2]; if(a!==b) return a>b?"A":"B"; }
+ let aw=0,bw=0,any=false;                            // fallback: skóre setov J,K,L
+ for(const ci of [9,10,11]){
+ const sm=String(row[ci]||"").match(/(\d+)\s*[:\-]\s*(\d+)/);
+ if(sm){ any=true; const x=+sm[1],y=+sm[2]; if(x>y)aw++; else if(y>x)bw++; }
+ }
+ if(any && aw!==bw) return aw>bw?"A":"B";
+ return null;
+}
+function parseXlsx(wb){
+ const name=wb.SheetNames.find(n=>/main\s*draw/i.test(n)) || wb.SheetNames[0];
+ const ws=wb.Sheets[name];
+ const grid=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});
+ const rows=[]; const names={};
+ for(const r of grid){
+ const num=parseInt(r[0],10);
+ if(!num || num<1 || num>30) continue;
+ const t1=String(r[5]||""), t2=String(r[7]||"");   // F=Tím1, H=Tím2
+ const ma=t1.match(/\(S(\d+)\)/), mb=t2.match(/\(S(\d+)\)/);
+ if(ma) names["S"+ma[1]]=cleanTeamName(t1);
+ if(mb) names["S"+mb[1]]=cleanTeamName(t2);
+ rows.push({num,win:winnerSideFromRow(r)});
+ }
+ return {rows,names};
+}
+function applyXlsx(res){
+ WIN={};
+ // aktualizuj mená dvojíc podľa seedov z 1. kola
+ Object.keys(res.names).forEach(seed=>{ if(res.names[seed]) TEAMS[seed]=res.names[seed]; });
+ // víťazov nastav vzostupne podľa čísla zápasu, aby sa skoršie kolá stihli vyriešiť
+ res.rows.slice().sort((a,b)=>a.num-b.num).forEach(r=>{
+ if(!r.win || !M[r.num]) return;
+ const seed=resolveSlot(r.win==="A"?M[r.num].A:M[r.num].B);
+ if(seed) WIN[r.num]=seed;
+ });
+ pruneStale();
+}
 
 /* parse the results table out of plain text */
 function parseDraw(text){
