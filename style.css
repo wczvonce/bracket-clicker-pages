@@ -1,0 +1,42 @@
+:root{--bg:#0e1216;--panel:#161e27;--hi:#1e2935;--line:#283541;--ink:#e9eff4;--muted:#7a8a9c;--accent:#ffb02e;--win:#3ddc84;--lose:#566273;--tbd:#3b4856;--mono:ui-monospace,"SF Mono",Consolas,monospace;--panel-hi:var(--hi)}
+.seed-note{color:var(--muted);font-weight:400}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}.wrap{max-width:580px;margin:auto;padding:18px 14px 100px}h1{font-size:1.1rem;margin:0 0 4px}h1 b{color:var(--accent)}header p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.45}.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.controls label{font-size:.8rem;color:var(--muted)}select,.upload{background:var(--hi);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:.84rem;font-weight:600}.upload{border-color:var(--accent);color:var(--accent);cursor:pointer}.msg{font-size:.76rem;line-height:1.4;min-height:1em;margin-top:7px}.msg.ok{color:var(--win)}.msg.err{color:#ff8a65}.track{margin:18px 0 24px}.track-title{font-size:1.05rem;font-weight:750;margin:0 0 10px}.track-scroll{display:flex;gap:14px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.track-scroll::-webkit-scrollbar{height:6px}.track-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}.col{flex:0 0 188px;display:flex;flex-direction:column;scroll-snap-align:start}.col-head{font:600 .61rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid var(--line)}.col-stack{display:flex;flex-direction:column;justify-content:space-around;gap:10px;flex:1}.col.stagger .col-stack{gap:18px;padding-top:26px}.match{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px}.match.path{border-color:rgba(255,176,46,.55)}.match::after,.match::before{content:"";position:absolute;top:50%;height:1px;width:14px;background:var(--line)}.col:not(:last-child) .match::after{right:-14px}.col:not(:first-child) .match::before{left:-14px}.mid{position:absolute;right:8px;top:5px;font:600 .53rem/1 var(--mono);color:var(--muted)}.auto{position:absolute;right:7px;bottom:5px;font:600 .48rem/1 var(--mono);color:var(--win)}.slot{display:flex;align-items:center;gap:7px;width:100%;border:1.5px solid transparent;border-radius:8px;background:var(--hi);color:var(--ink);padding:7px 8px;margin:2px 0;text-align:left;font-size:.83rem;line-height:1.15;cursor:pointer}.slot:disabled{cursor:default}.seed{font:600 .55rem/1 var(--mono);color:var(--muted);min-width:28px}.name{flex:1;font-weight:600;overflow-wrap:anywhere}.slot.win{border-color:var(--win);background:rgba(61,220,132,.10)}.slot.win .seed{color:var(--win)}.slot.lose{opacity:.4}.slot.lose .name{text-decoration:line-through;text-decoration-color:var(--lose)}.slot.tbd{color:var(--tbd)}.slot.tbd .name{font-style:italic}.slot.target .name,.slot.target .seed{color:var(--accent)}.check{width:16px;height:16px;opacity:0;color:var(--win);flex:none}.slot.win .check{opacity:1}.bar{position:fixed;left:0;right:0;bottom:0;max-width:580px;margin:auto;display:flex;gap:9px;padding:11px 14px calc(11px + env(safe-area-inset-bottom));background:rgba(14,18,22,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line)}.btn{flex:1;border:1px solid var(--line);border-radius:12px;background:var(--hi);color:var(--ink);padding:13px;font-size:.9rem;font-weight:700}.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a1205}.btn.ok{background:var(--win);border-color:var(--win);color:#052312}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Klávesnica: fokus musí byť viditeľný na slotoch aj na horizontálnych pásoch. */
+.slot:focus-visible,.track-scroll:focus-visible,.btn:focus-visible,.upload:focus-visible,.bye-btn:focus-visible,.seed-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* OCR — kontrola nasadenia (presunuté z injektovaného CSS v ocr.js/fixes.js kvôli CSP bez 'unsafe-inline') */
+.upload.seed{border-color:var(--win);color:var(--win)}
+.ocr-progress{height:5px;border-radius:9px;background:var(--line);overflow:hidden;margin-top:7px;display:none}
+.ocr-progress.on{display:block}
+.ocr-progress span{display:block;height:100%;width:0;background:var(--win)}
+.seed-review{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;margin:14px 0}
+.seed-review.hidden{display:none}
+.seed-review h2{font-size:1rem;margin:0 0 3px}
+.seed-review p,.seed-hint{font-size:.76rem;color:var(--muted);line-height:1.4}
+.seed-preview{width:100%;max-height:210px;object-fit:contain;background:#fff;border-radius:9px;margin:10px 0}
+.seed-list{display:flex;flex-direction:column;gap:7px}
+.seed-row{display:grid;grid-template-columns:38px 1fr auto;gap:7px;align-items:center}
+.seed-tag{font:700 .68rem/1 var(--mono);color:var(--accent)}
+.seed-input{min-width:0;width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px;font-size:.84rem}
+.seed-row.warn .seed-input{border-color:var(--accent)}
+.seed-row.bye .seed-input{color:var(--muted);font-style:italic}
+.bye-btn{border:1px solid var(--line);background:var(--panel-hi);color:var(--muted);border-radius:8px;padding:8px 7px;font:700 .62rem/1 var(--mono)}
+.seed-row.bye .bye-btn{border-color:var(--win);color:var(--win)}
+.seed-inline-error{margin:10px 0 0;padding:9px 10px;border:1px solid #ff8a65;border-radius:8px;color:#ffb199;background:rgba(255,138,101,.08);font-size:.76rem;line-height:1.35}
+.seed-actions{display:flex;gap:8px;margin-top:11px}
+.seed-actions button{flex:1;border:1px solid var(--line);background:var(--panel-hi);color:var(--ink);border-radius:10px;padding:11px;font-weight:700}
+.seed-actions .primary{background:var(--win);border-color:var(--win);color:#052312}
+
+/* Tlač: tmavá téma by vytlačila biely text na bielom papieri; fixná lišta prekrýva obsah. */
+@media print{
+ body{background:#fff!important;color:#111!important}
+ .wrap{max-width:none}
+ .bar,.upload,.controls,#msg{display:none!important}
+ .track,.col,.match{break-inside:avoid}
+ .track-scroll{overflow:visible!important;flex-wrap:wrap}
+ .slot,.col-head,.track-title,.mid,h1,p{color:#111!important;background:#fff!important;border-color:#999!important}
+ .slot.win{background:#e6f6ea!important;border-color:#2c8a4b!important}
+ .slot.lose{opacity:.55}
+ .slot .name,.slot .seed{color:#111!important}
+}
