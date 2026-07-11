@@ -1,0 +1,8 @@
+{
+  "name": "volley-pavuk",
+  "private": true,
+  "description": "Pavúk SVF Niké — statická aplikácia, testy bežia čistým Node bez závislostí",
+  "scripts": {
+    "test": "node tests/run-all.js"
+  }
+}
