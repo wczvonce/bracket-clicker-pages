@@ -27,68 +27,83 @@
 
       const style=doc.createElement('style');
       style.textContent=`
-        .tax-mobile-picker{position:relative;width:100%}
-        .tax-mobile-picker select{
-          appearance:none;-webkit-appearance:none;width:100%;height:60px;
-          padding:0 50px 0 18px;border:2px solid #d9d1c3;border-radius:15px;
-          background:#fff;color:#1e3a34;font:800 24px/1 system-ui,-apple-system,Segoe UI,sans-serif;
-          text-align:center;text-align-last:center;box-shadow:0 3px 12px rgba(30,58,52,.08);
-          cursor:pointer;touch-action:manipulation
+        .tax-direct-input{
+          appearance:none!important;-webkit-appearance:none!important;
+          display:block!important;width:100%!important;height:60px!important;
+          padding:0 14px!important;border:2px solid #d9d1c3!important;
+          border-radius:15px!important;background:#fff!important;color:#1e3a34!important;
+          font:800 24px/1 system-ui,-apple-system,Segoe UI,sans-serif!important;
+          text-align:center!important;box-shadow:0 3px 12px rgba(30,58,52,.08)!important;
+          cursor:text!important;touch-action:manipulation!important;
+          -moz-appearance:textfield!important
         }
-        .tax-mobile-picker:after{
-          content:'⌄';position:absolute;right:17px;top:50%;transform:translateY(-57%);
-          color:#b98a3c;font-size:28px;font-weight:900;pointer-events:none
+        .tax-direct-input::-webkit-inner-spin-button,
+        .tax-direct-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+        .tax-direct-input:focus{
+          outline:3px solid rgba(185,138,60,.22)!important;
+          border-color:#b98a3c!important
         }
-        .tax-mobile-picker select:focus{outline:3px solid rgba(185,138,60,.22);border-color:#b98a3c}
-        .tax-mobile-picker select:active{background:#faf7f1}
-        .tax-original-input{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;padding:0!important;border:0!important}
-        @media(max-width:370px){.tax-mobile-picker select{height:56px;font-size:22px}}
+        @media(max-width:370px){.tax-direct-input{height:56px!important;font-size:22px!important}}
       `;
       doc.head.appendChild(style);
 
-      function buildPicker(id,values){
-        const input=doc.getElementById(id);
-        if(!input||input.parentElement.querySelector('.tax-mobile-picker'))return;
+      function showZeroWhileEmpty(){
+        const persons=doc.getElementById('taxPersons');
+        const nights=doc.getElementById('taxNights');
+        const formula=doc.getElementById('taxFormula');
+        const result=doc.getElementById('taxResult');
+        if(!persons||!nights)return;
+        const p=persons.value===''?0:Number(persons.value);
+        const n=nights.value===''?0:Number(nights.value);
+        if(formula)formula.textContent=`${p||0} × ${n||0} × 2 €`;
+        if(result)result.textContent=`${p*n*2} €`;
+      }
 
-        input.classList.add('tax-original-input');
-        input.tabIndex=-1;
+      function makeEditable(id,max,digits){
+        const input=doc.getElementById(id);
+        if(!input||input.dataset.mobileTyping==='ready')return;
+
+        input.dataset.mobileTyping='ready';
+        input.type='text';
+        input.inputMode='numeric';
+        input.pattern='[0-9]*';
+        input.maxLength=digits;
+        input.autocomplete='off';
+        input.setAttribute('enterkeyhint','done');
+        input.classList.add('tax-direct-input');
+        input.removeAttribute('min');
+        input.removeAttribute('max');
+        input.removeAttribute('step');
         input.removeAttribute('onfocus');
         input.removeAttribute('onclick');
         input.removeAttribute('oninput');
         input.removeAttribute('onblur');
 
-        const wrap=doc.createElement('div');
-        wrap.className='tax-mobile-picker';
-        const select=doc.createElement('select');
-        select.setAttribute('aria-label',id==='taxPersons'?'Počet osôb':'Počet nocí');
+        const selectValue=()=>setTimeout(()=>{
+          try{input.setSelectionRange(0,input.value.length)}catch(_){input.select()}
+        },0);
 
-        const current=Math.max(1,parseInt(input.value,10)||1);
-        const finalValues=[...new Set([...values,current])].sort((a,b)=>a-b);
-        finalValues.forEach(value=>{
-          const option=doc.createElement('option');
-          option.value=String(value);
-          option.textContent=String(value);
-          if(value===current)option.selected=true;
-          select.appendChild(option);
+        input.addEventListener('focus',selectValue);
+        input.addEventListener('click',selectValue);
+        input.addEventListener('input',()=>{
+          let value=(input.value||'').replace(/\D/g,'');
+          if(value.length>1)value=value.replace(/^0+/,'');
+          if(value!==''&&Number(value)>max)value=String(max);
+          if(input.value!==value)input.value=value;
+          if(value==='')showZeroWhileEmpty();
+          else if(typeof win.updateTaxCalculator==='function')win.updateTaxCalculator();
         });
-
-        select.addEventListener('change',()=>{
-          input.value=select.value;
-          input.dispatchEvent(new Event('input',{bubbles:true}));
-          input.dispatchEvent(new Event('change',{bubbles:true}));
+        input.addEventListener('blur',()=>{
+          let value=parseInt(input.value,10);
+          if(!Number.isFinite(value)||value<1)value=1;
+          if(value>max)value=max;
+          input.value=String(value);
           if(typeof win.updateTaxCalculator==='function')win.updateTaxCalculator();
         });
-
-        input.parentNode.insertBefore(wrap,input);
-        wrap.appendChild(select);
       }
 
-      buildPicker('taxPersons',[1,2,3,4,5,6,7,8,9,10]);
-      buildPicker('taxNights',[
-        1,2,3,4,5,6,7,8,9,10,11,12,13,14,
-        15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,
-        45,60,90,120,180,365
-      ]);
+      makeEditable('taxPersons',50,2);
+      makeEditable('taxNights',365,3);
     }
 
     frame.addEventListener('load',()=>{
