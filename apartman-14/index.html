@@ -15,10 +15,74 @@
   <iframe id="site" title="Apartmán 14" allow="clipboard-write"></iframe>
   <script>
     const frame=document.getElementById('site');
-    frame.src='../ap14-k7x2/'+(location.hash||'#4824');
-    window.addEventListener('hashchange',()=>{
+
+    function setFrameSource(){
       frame.src='../ap14-k7x2/'+(location.hash||'#4824');
+    }
+
+    function enhanceTaxCalculator(){
+      const doc=frame.contentDocument;
+      const win=frame.contentWindow;
+      if(!doc)return;
+
+      const style=doc.createElement('style');
+      style.textContent=`
+        .tax-stepper{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center}
+        .tax-stepper button{appearance:none;border:1px solid var(--line);background:#fff;color:var(--pine);border-radius:12px;height:52px;font-size:30px;font-weight:800;line-height:1;box-shadow:0 2px 8px rgba(30,58,52,.07);touch-action:manipulation}
+        .tax-stepper button:active{transform:scale(.96);background:var(--brass-soft)}
+        .tax-stepper input{height:52px;padding:0!important;font-size:22px!important;border:1px solid var(--line)!important;background:#fff!important;cursor:default}
+        .tax-stepper input:focus{box-shadow:none!important;border-color:var(--line)!important}
+        @media(max-width:370px){.tax-stepper{grid-template-columns:46px 1fr 46px}.tax-stepper button,.tax-stepper input{height:48px}}
+      `;
+      doc.head.appendChild(style);
+
+      function buildStepper(id,max){
+        const input=doc.getElementById(id);
+        if(!input||input.parentElement.querySelector('.tax-stepper'))return;
+
+        input.readOnly=true;
+        input.removeAttribute('onfocus');
+        input.removeAttribute('onclick');
+        input.removeAttribute('oninput');
+        input.removeAttribute('onblur');
+
+        const stepper=doc.createElement('div');
+        stepper.className='tax-stepper';
+
+        const minus=doc.createElement('button');
+        minus.type='button';
+        minus.textContent='−';
+        minus.setAttribute('aria-label','Znížiť hodnotu');
+
+        const plus=doc.createElement('button');
+        plus.type='button';
+        plus.textContent='+';
+        plus.setAttribute('aria-label','Zvýšiť hodnotu');
+
+        function change(delta){
+          let value=parseInt(input.value,10)||1;
+          value=Math.max(1,Math.min(max,value+delta));
+          input.value=String(value);
+          if(typeof win.updateTaxCalculator==='function')win.updateTaxCalculator();
+        }
+
+        minus.addEventListener('click',()=>change(-1));
+        plus.addEventListener('click',()=>change(1));
+
+        input.parentNode.insertBefore(stepper,input);
+        stepper.append(minus,input,plus);
+      }
+
+      buildStepper('taxPersons',50);
+      buildStepper('taxNights',365);
+    }
+
+    frame.addEventListener('load',()=>{
+      try{enhanceTaxCalculator()}catch(error){console.warn('Calculator enhancement failed',error)}
     });
+
+    window.addEventListener('hashchange',setFrameSource);
+    setFrameSource();
   </script>
 </body>
 </html>
