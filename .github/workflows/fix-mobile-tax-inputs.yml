@@ -1,0 +1,86 @@
+name: Fix mobile city-tax inputs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-mobile-tax-inputs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch mobile number inputs
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('ap14-k7x2/index.html')
+          text = path.read_text(encoding='utf-8')
+          marker = 'mobile-tax-fix-v2'
+          if marker in text:
+              raise SystemExit(0)
+
+          persons = '<input id="taxPersons" type="text" value="1" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off">'
+          nights = '<input id="taxNights" type="text" value="1" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off">'
+
+          text, n1 = re.subn(r'<input\b(?=[^>]*\bid=["\']taxPersons["\'])[^>]*>', persons, text, count=1, flags=re.I)
+          text, n2 = re.subn(r'<input\b(?=[^>]*\bid=["\']taxNights["\'])[^>]*>', nights, text, count=1, flags=re.I)
+          if n1 != 1 or n2 != 1:
+              raise RuntimeError(f'Inputs not found: persons={n1}, nights={n2}')
+
+          patch = r'''<script id="mobile-tax-fix-v2">
+          (()=>{
+            const get=(id)=>document.getElementById(id);
+            const clean=(el,max)=>{
+              let v=(el.value||'').replace(/\D/g,'');
+              if(v.length>1)v=v.replace(/^0+/,'');
+              if(v!==''&&Number(v)>max)v=String(max);
+              el.value=v;
+              render();
+            };
+            const normalise=(el,max)=>{
+              let v=parseInt(el.value,10);
+              if(!Number.isFinite(v)||v<1)v=1;
+              if(v>max)v=max;
+              el.value=String(v);
+              render();
+            };
+            const render=()=>{
+              const p=get('taxPersons'),n=get('taxNights');
+              if(!p||!n)return;
+              const persons=p.value===''?0:Number(p.value);
+              const nights=n.value===''?0:Number(n.value);
+              const formula=get('taxFormula'),result=get('taxResult');
+              if(formula)formula.textContent=`${persons||0} × ${nights||0} × 2 €`;
+              if(result)result.textContent=`${persons*nights*2} €`;
+            };
+            const setup=()=>{
+              const p=get('taxPersons'),n=get('taxNights');
+              if(!p||!n)return;
+              [[p,50],[n,365]].forEach(([el,max])=>{
+                el.addEventListener('focus',()=>setTimeout(()=>el.select(),0));
+                el.addEventListener('click',()=>el.select());
+                el.addEventListener('input',()=>clean(el,max));
+                el.addEventListener('blur',()=>normalise(el,max));
+              });
+              render();
+            };
+            document.readyState==='loading'?document.addEventListener('DOMContentLoaded',setup):setup();
+          })();
+          </script>'''
+          text = text.replace('</body>', patch + '</body>', 1)
+          path.write_text(text, encoding='utf-8')
+      - name: Commit fix
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ap14-k7x2/index.html
+          git commit -m "Fix city-tax calculator inputs on mobile"
+          git push
