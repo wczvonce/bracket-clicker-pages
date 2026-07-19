@@ -27,54 +27,68 @@
 
       const style=doc.createElement('style');
       style.textContent=`
-        .tax-stepper{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center}
-        .tax-stepper button{appearance:none;border:1px solid var(--line);background:#fff;color:var(--pine);border-radius:12px;height:52px;font-size:30px;font-weight:800;line-height:1;box-shadow:0 2px 8px rgba(30,58,52,.07);touch-action:manipulation}
-        .tax-stepper button:active{transform:scale(.96);background:var(--brass-soft)}
-        .tax-stepper input{height:52px;padding:0!important;font-size:22px!important;border:1px solid var(--line)!important;background:#fff!important;cursor:default}
-        .tax-stepper input:focus{box-shadow:none!important;border-color:var(--line)!important}
-        @media(max-width:370px){.tax-stepper{grid-template-columns:46px 1fr 46px}.tax-stepper button,.tax-stepper input{height:48px}}
+        .tax-mobile-picker{position:relative;width:100%}
+        .tax-mobile-picker select{
+          appearance:none;-webkit-appearance:none;width:100%;height:60px;
+          padding:0 50px 0 18px;border:2px solid #d9d1c3;border-radius:15px;
+          background:#fff;color:#1e3a34;font:800 24px/1 system-ui,-apple-system,Segoe UI,sans-serif;
+          text-align:center;text-align-last:center;box-shadow:0 3px 12px rgba(30,58,52,.08);
+          cursor:pointer;touch-action:manipulation
+        }
+        .tax-mobile-picker:after{
+          content:'⌄';position:absolute;right:17px;top:50%;transform:translateY(-57%);
+          color:#b98a3c;font-size:28px;font-weight:900;pointer-events:none
+        }
+        .tax-mobile-picker select:focus{outline:3px solid rgba(185,138,60,.22);border-color:#b98a3c}
+        .tax-mobile-picker select:active{background:#faf7f1}
+        .tax-original-input{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;padding:0!important;border:0!important}
+        @media(max-width:370px){.tax-mobile-picker select{height:56px;font-size:22px}}
       `;
       doc.head.appendChild(style);
 
-      function buildStepper(id,max){
+      function buildPicker(id,values){
         const input=doc.getElementById(id);
-        if(!input||input.parentElement.querySelector('.tax-stepper'))return;
+        if(!input||input.parentElement.querySelector('.tax-mobile-picker'))return;
 
-        input.readOnly=true;
+        input.classList.add('tax-original-input');
+        input.tabIndex=-1;
         input.removeAttribute('onfocus');
         input.removeAttribute('onclick');
         input.removeAttribute('oninput');
         input.removeAttribute('onblur');
 
-        const stepper=doc.createElement('div');
-        stepper.className='tax-stepper';
+        const wrap=doc.createElement('div');
+        wrap.className='tax-mobile-picker';
+        const select=doc.createElement('select');
+        select.setAttribute('aria-label',id==='taxPersons'?'Počet osôb':'Počet nocí');
 
-        const minus=doc.createElement('button');
-        minus.type='button';
-        minus.textContent='−';
-        minus.setAttribute('aria-label','Znížiť hodnotu');
+        const current=Math.max(1,parseInt(input.value,10)||1);
+        const finalValues=[...new Set([...values,current])].sort((a,b)=>a-b);
+        finalValues.forEach(value=>{
+          const option=doc.createElement('option');
+          option.value=String(value);
+          option.textContent=String(value);
+          if(value===current)option.selected=true;
+          select.appendChild(option);
+        });
 
-        const plus=doc.createElement('button');
-        plus.type='button';
-        plus.textContent='+';
-        plus.setAttribute('aria-label','Zvýšiť hodnotu');
-
-        function change(delta){
-          let value=parseInt(input.value,10)||1;
-          value=Math.max(1,Math.min(max,value+delta));
-          input.value=String(value);
+        select.addEventListener('change',()=>{
+          input.value=select.value;
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          input.dispatchEvent(new Event('change',{bubbles:true}));
           if(typeof win.updateTaxCalculator==='function')win.updateTaxCalculator();
-        }
+        });
 
-        minus.addEventListener('click',()=>change(-1));
-        plus.addEventListener('click',()=>change(1));
-
-        input.parentNode.insertBefore(stepper,input);
-        stepper.append(minus,input,plus);
+        input.parentNode.insertBefore(wrap,input);
+        wrap.appendChild(select);
       }
 
-      buildStepper('taxPersons',50);
-      buildStepper('taxNights',365);
+      buildPicker('taxPersons',[1,2,3,4,5,6,7,8,9,10]);
+      buildPicker('taxNights',[
+        1,2,3,4,5,6,7,8,9,10,11,12,13,14,
+        15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,
+        45,60,90,120,180,365
+      ]);
     }
 
     frame.addEventListener('load',()=>{
