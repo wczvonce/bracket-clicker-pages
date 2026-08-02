@@ -14,6 +14,7 @@ test("mobilný formulár vlastníka obsahuje iba potrebné údaje a podpísaný 
     assert.ok(html.includes(field), `chýba ${field}`);
   }
   assert.ok(html.includes("location.hash.slice(1)"));
+  assert.ok(html.includes('/^\\d{6,20}$/.test'));
   assert.ok(html.includes('content="strict-origin-when-cross-origin"'));
   assert.ok(!html.includes('content="no-referrer"'));
   assert.ok(!html.includes("localStorage"));

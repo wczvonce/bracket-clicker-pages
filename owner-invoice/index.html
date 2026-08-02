@@ -50,6 +50,7 @@
       const bytes = Uint8Array.from(atob(padded), character => character.charCodeAt(0));
       const claims = JSON.parse(new TextDecoder().decode(bytes));
       if (claims.v !== 1 || !claims.rid || !claims.name || !claims.exp || Date.now() / 1000 > claims.exp) throw new Error("claims");
+      if (!/^\d{6,20}$/.test(String(claims.bid || ""))) throw new Error("booking");
       return claims;
     }
 
