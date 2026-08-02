@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta name="referrer" content="no-referrer">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="theme-color" content="#1e3a34">
   <title>Doplnenie údajov pobytu</title>
   <style>
@@ -84,6 +84,7 @@
         _captcha: "false",
         owner_form_version: "1",
         owner_form_token: token,
+        request_id: claims.rid,
         "Príchod": checkIn,
         "Odchod": checkOut,
         "Celková cena": totalGross,
@@ -97,10 +98,11 @@
           headers: {"Content-Type": "application/json", "Accept": "application/json"},
           body: JSON.stringify(payload)
         });
-        if (!response.ok) throw new Error("submit");
+        const responseData = await response.json().catch(() => null);
+        if (!response.ok || !responseData || !responseData.success) throw new Error("submit");
         form.querySelectorAll("input,button").forEach(element => element.disabled = true);
         status.className = "success";
-        status.textContent = "Údaje boli prijaté. Faktúra sa bezpečne spracuje a odošle.";
+        status.textContent = "Údaje boli prijaté. Systém ich skontroluje do 30 sekúnd. Ak pobyt ešte neskončil, faktúru odošle až v deň odchodu.";
       } catch (_) {
         status.className = "error";
         status.textContent = "Odoslanie zlyhalo. Skúste to znova alebo odpovedzte na pôvodný e-mail.";

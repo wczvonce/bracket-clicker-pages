@@ -14,7 +14,16 @@ test("mobilný formulár vlastníka obsahuje iba potrebné údaje a podpísaný 
     assert.ok(html.includes(field), `chýba ${field}`);
   }
   assert.ok(html.includes("location.hash.slice(1)"));
+  assert.ok(html.includes('content="strict-origin-when-cross-origin"'));
+  assert.ok(!html.includes('content="no-referrer"'));
   assert.ok(!html.includes("localStorage"));
+});
+
+test("úspech sa ukáže iba po kladnej JSON odpovedi FormSubmit", () => {
+  assert.ok(html.includes("await response.json()"));
+  assert.ok(html.includes("!responseData.success"));
+  assert.ok(html.includes("request_id: claims.rid"));
+  assert.ok(html.includes("faktúru odošle až v deň odchodu"));
 });
 
 test("inline JavaScript mobilného formulára je syntakticky platný", () => {
