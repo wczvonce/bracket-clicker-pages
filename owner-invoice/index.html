@@ -25,7 +25,8 @@
     <section class="card">
       <div id="invalid" class="error hidden">Tento odkaz je neplatný alebo už vypršal. Použite odpoveď na pôvodný e-mail.</div>
       <form id="ownerForm" class="hidden">
-        <div class="summary"><span>Hosť</span><b id="guestName"></b><span>Booking ID</span><b id="bookingId"></b></div>
+        <div class="summary"><span>Hosť</span><b id="guestName"></b></div>
+        <div class="field"><label for="bookingId">Booking ID</label><input id="bookingId" type="text" required inputmode="numeric" pattern="[0-9]{6,20}" minlength="6" maxlength="20" autocomplete="off" placeholder="Napr. 1234567890"><p class="note">Ak ho hosť neuviedol alebo ho uviedol zle, prepíšte ho podľa Booking.com.</p></div>
         <div class="field"><label for="checkIn">Dátum príchodu</label><input id="checkIn" type="date" required></div>
         <div class="field"><label for="checkOut">Dátum odchodu</label><input id="checkOut" type="date" required></div>
         <div class="field"><label for="totalGross">Celková cena rezervácie v EUR</label><input id="totalGross" type="number" required min="0.01" max="10000" step="0.01" inputmode="decimal" placeholder="158,00"></div>
@@ -50,7 +51,8 @@
       const bytes = Uint8Array.from(atob(padded), character => character.charCodeAt(0));
       const claims = JSON.parse(new TextDecoder().decode(bytes));
       if (claims.v !== 1 || !claims.rid || !claims.name || !claims.exp || Date.now() / 1000 > claims.exp) throw new Error("claims");
-      if (!/^\d{6,20}$/.test(String(claims.bid || ""))) throw new Error("booking");
+      const suppliedBookingId = String(claims.bid || "").trim();
+      claims.bid = /^\d{6,20}$/.test(suppliedBookingId) ? suppliedBookingId : "";
       return claims;
     }
 
@@ -60,7 +62,7 @@
     try {
       claims = decodeClaims(token);
       document.getElementById("guestName").textContent = claims.name;
-      document.getElementById("bookingId").textContent = claims.bid || "doplní systém";
+      document.getElementById("bookingId").value = claims.bid;
       form.classList.remove("hidden");
     } catch (_) {
       invalid.classList.remove("hidden");
@@ -71,6 +73,12 @@
       const checkIn = document.getElementById("checkIn").value;
       const checkOut = document.getElementById("checkOut").value;
       const totalGross = document.getElementById("totalGross").value;
+      const bookingId = document.getElementById("bookingId").value.trim();
+      if (!/^\d{6,20}$/.test(bookingId)) {
+        status.className = "error";
+        status.textContent = "Doplňte platné Booking ID (6 až 20 číslic).";
+        return;
+      }
       if (checkOut <= checkIn) {
         status.className = "error";
         status.textContent = "Dátum odchodu musí byť po dátume príchodu.";
@@ -89,7 +97,7 @@
         "Príchod": checkIn,
         "Odchod": checkOut,
         "Celková cena": totalGross,
-        "Booking ID": claims.bid || "—",
+        "Booking ID": bookingId,
         "Potvrdené meno": claims.name,
         email_verified: String(document.getElementById("emailVerified").checked)
       };
@@ -103,7 +111,7 @@
         if (!response.ok || !responseData || !responseData.success) throw new Error("submit");
         form.querySelectorAll("input,button").forEach(element => element.disabled = true);
         status.className = "success";
-        status.textContent = "Údaje boli prijaté. Systém ich skontroluje do 30 sekúnd. Ak pobyt ešte neskončil, faktúru odošle až v deň odchodu.";
+        status.textContent = "Údaje boli prijaté. Systém ich skontroluje pri najbližšom šesťhodinovom cykle. Ak pobyt ešte neskončil, faktúru odošle až v deň odchodu.";
       } catch (_) {
         status.className = "error";
         status.textContent = "Odoslanie zlyhalo. Skúste to znova alebo odpovedzte na pôvodný e-mail.";
@@ -113,3 +121,4 @@
   </script>
 </body>
 </html>
+
