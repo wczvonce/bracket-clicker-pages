@@ -230,10 +230,16 @@
     bookingIdInput.value = claims.bookingId;
 
     if (claims.properties.length === 1) {
+      // Skryty required <select> by inak zablokoval nativne odoslanie formulara
+      // este pred spustenim nasho submit handlera (najma v mobilnom Chrome).
+      propertySelect.required = false;
+      propertySelect.disabled = true;
       singleProperty.dataset.propertyCode = claims.properties[0].code;
       singlePropertyLabel.textContent = claims.properties[0].label;
       setHidden(singleProperty, false);
     } else {
+      propertySelect.required = true;
+      propertySelect.disabled = false;
       var placeholder = document.createElement("option");
       placeholder.value = "";
       placeholder.textContent = "Vyberte apartmán";

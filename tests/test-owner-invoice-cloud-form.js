@@ -156,12 +156,16 @@ test("mobilné DOM zobrazenie vytvorí výber pri viacerých povolených apartm�
 test("jeden povolený apartmán sa zobrazí bez zbytočného výberu", () => {
   const claims = validClaims({ props: ["APT14"] });
   const { api, elements } = createSandbox("#token=" + tokenFor(claims));
+  elements.propertyCode = makeElement();
+  elements.propertyCode.required = true;
   api.initialize();
 
   assert.equal(elements.singleProperty.classList.contains("hidden"), false);
   assert.equal(elements.singleProperty.dataset.propertyCode, "APT14");
   assert.equal(elements.singlePropertyLabel.textContent, "Apartmán 14 · Školská");
   assert.equal(elements.propertyCode.children.length, 0);
+  assert.equal(elements.propertyCode.required, false);
+  assert.equal(elements.propertyCode.disabled, true);
 });
 
 test("neplatný alebo chýbajúci token otvorí zrozumiteľný chybový stav", () => {
