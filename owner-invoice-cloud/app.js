@@ -295,7 +295,10 @@
           method: "POST",
           credentials: "omit",
           cache: "no-store",
-          referrerPolicy: "no-referrer",
+          // FormSubmit odmieta poziadavky bez dokazatelneho weboveho povodu.
+          // Pri cross-origin poziadavke sa posle iba origin; fragment s tokenom
+          // sa podla weboveho standardu do Referer hlavicky nikdy nezahrna.
+          referrerPolicy: "strict-origin-when-cross-origin",
           headers: {
             "Content-Type": "application/json",
             "Accept": "application/json"

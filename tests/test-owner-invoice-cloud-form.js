@@ -110,9 +110,10 @@ test("cloud formulár je mobilný, súkromný a bez Google prihlásenia", () => 
   assert.ok(!/<script[^>]+src=["']https?:/i.test(html), "nesmie načítať cudzie JavaScripty");
   assert.ok(!script.includes("localStorage"));
   assert.ok(!script.includes("document.cookie"));
+  assert.ok(script.includes('referrerPolicy: "strict-origin-when-cross-origin"'));
   assert.ok(style.includes("env(safe-area-inset-top)"));
-  assert.ok(html.includes('app.js?v=20260807-2'));
-  assert.ok(html.includes('style.css?v=20260807-2'));
+  assert.ok(html.includes('app.js?v=20260807-3'));
+  assert.ok(html.includes('style.css?v=20260807-3'));
 });
 
 test("v2 token sa číta iba z fragmentu a kontroluje základný tvar claims", () => {
