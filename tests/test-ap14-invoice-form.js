@@ -15,12 +15,14 @@ test("AP14 fakturačný formulár obsahuje údaje potrebné pre automatizáciu",
     assert.ok(html.includes(`id="${id}"`), `chýba pole ${id}`);
   }
   for (const value of [
-    "schema_version:'2'", "property_code:'APT7'", "source_site:location.hostname",
-    "email_confirmed:'true'", "electronic_delivery_consent:String(",
-    "'[FAKTURA-ZIADOST][APT7] Apartmán 7, Školská 9'",
+    "schema_version:'3'", "property_code:'APT14'", "source_site:INVOICE_SOURCE_SITE",
+    "email_confirmed:String(", "electronic_delivery_consent:String(",
+    "'[FAKTURA-ZIADOST][APT14] Apartmán 14, Školská 9'",
+    "getOrCreateInvoiceRequestId", "Doplniť pobyt a cenu",
   ]) {
     assert.ok(html.includes(value), `chýba odosielaný údaj ${value}`);
   }
+  assert.ok(!html.includes("__APPS_SCRIPT_EXEC_URL__"), "produkčný endpoint nesmie zostať placeholder");
 });
 
 test("AP14 formulár už neposiela starú nejednoznačnú schému", () => {
