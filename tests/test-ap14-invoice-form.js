@@ -18,7 +18,9 @@ test("AP14 fakturačný formulár obsahuje údaje potrebné pre automatizáciu",
     "schema_version:'3'", "property_code:'APT14'", "source_site:INVOICE_SOURCE_SITE",
     "email_confirmed:String(", "electronic_delivery_consent:String(",
     "'[FAKTURA-ZIADOST][APT14] Apartmán 14, Školská 9'",
-    "getOrCreateInvoiceRequestId", "Doplniť pobyt a cenu",
+    "getOrCreateInvoiceRequestId", "buildInvoiceOwnerLink(requestId)",
+    "https://accounts.google.com/AccountChooser", "povraznikovav@gmail.com",
+    "Doplniť pobyt a cenu",
   ]) {
     assert.ok(html.includes(value), `chýba odosielaný údaj ${value}`);
   }
