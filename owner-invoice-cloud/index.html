@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#173f35">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://formsubmit.co; img-src 'none'; font-src 'none'; base-uri 'none'; form-action https://formsubmit.co; frame-src 'none'; object-src 'none'; media-src 'none'; manifest-src 'none'; worker-src 'none'; upgrade-insecure-requests">
+  <title>Doplnenie údajov k faktúre</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="page-header">
+    <div class="page-width">
+      <p class="eyebrow">Faktúra za ubytovanie</p>
+      <h1>Doplňte pobyt a cenu</h1>
+      <p class="header-note">Faktúra sa vytvorí až po vašom potvrdení údajov.</p>
+    </div>
+  </header>
+
+  <main class="page-width" id="main">
+    <section id="loadingPanel" class="panel state-panel" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Načítavam bezpečný formulár…</p>
+    </section>
+
+    <section id="invalidPanel" class="panel state-panel state-error hidden" role="alert" tabindex="-1">
+      <h2>Odkaz sa nedá použiť</h2>
+      <p id="invalidMessage">Tento odkaz je neplatný alebo už vypršal.</p>
+      <p>Otvorte najnovší e-mail s predmetom „Doplňte pobyt a cenu“. Ak problém pretrváva, odpovedzte na e-mail so žiadosťou o faktúru.</p>
+    </section>
+
+    <section id="formPanel" class="panel hidden" aria-labelledby="formTitle">
+      <h2 id="formTitle" class="sr-only">Údaje rezervácie</h2>
+
+      <div class="summary" aria-label="Žiadosť o faktúru">
+        <div>
+          <span>Hosť</span>
+          <strong id="guestName"></strong>
+        </div>
+        <div>
+          <span>Booking ID zo žiadosti</span>
+          <strong id="bookingSummary">Neuvedené</strong>
+        </div>
+      </div>
+
+      <form id="ownerForm">
+        <div id="propertyField" class="field hidden">
+          <label for="propertyCode">Apartmán</label>
+          <select id="propertyCode" required autocomplete="off"></select>
+          <p class="hint">Vyberte apartmán, v ktorom bol hosť ubytovaný.</p>
+        </div>
+
+        <div id="singleProperty" class="single-property hidden">
+          <span>Apartmán</span>
+          <strong id="singlePropertyLabel"></strong>
+        </div>
+
+        <div class="field">
+          <label for="bookingId">Booking ID</label>
+          <input id="bookingId" name="booking_id" type="text" required inputmode="numeric" pattern="[0-9]{6,20}" minlength="6" maxlength="20" autocomplete="off" placeholder="Napr. 1234567890" aria-describedby="bookingHint">
+          <p id="bookingHint" class="hint">Ak je číslo v žiadosti nesprávne, prepíšte ho podľa Booking.com.</p>
+        </div>
+
+        <div class="date-grid">
+          <div class="field">
+            <label for="checkIn">Dátum príchodu</label>
+            <input id="checkIn" name="check_in" type="date" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="checkOut">Dátum odchodu</label>
+            <input id="checkOut" name="check_out" type="date" required autocomplete="off">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="totalGross">Celková cena rezervácie v EUR</label>
+          <div class="money-input">
+            <input id="totalGross" name="total_gross" type="text" required inputmode="decimal" maxlength="9" autocomplete="off" placeholder="158,00" aria-describedby="grossHint">
+            <span aria-hidden="true">EUR</span>
+          </div>
+          <p id="grossHint" class="hint">Uveďte celkovú cenu rezervácie, nie sumu po odpočítaní provízie.</p>
+        </div>
+
+        <div class="confirmation">
+          <input id="emailVerified" name="email_verified" type="checkbox" required>
+          <label for="emailVerified">Porovnala som e-mail a meno hosťa s rezerváciou Booking.com a potvrdzujem správnosť údajov.</label>
+        </div>
+
+        <div id="formError" class="form-error hidden" role="alert" tabindex="-1"></div>
+        <button id="submitButton" type="submit">Vytvoriť a odoslať faktúru</button>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <p class="privacy-note">Bezpečnostný kód z odkazu overí server. Tento formulár nevyžaduje prihlásenie do Googlu.</p>
+      </form>
+    </section>
+
+    <section id="successPanel" class="panel state-panel state-success hidden" role="status" tabindex="-1">
+      <div class="success-mark" aria-hidden="true">✓</div>
+      <h2>Údaje boli prijaté</h2>
+      <p>Faktúra sa bezpečne spracuje a odošle do jednej minúty. Pri chybe dostanete e-mail na manuálnu kontrolu.</p>
+    </section>
+  </main>
+</body>
+</html>

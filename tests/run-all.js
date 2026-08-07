@@ -1,6 +1,6 @@
 // Spustí všetky testy: node tests/run-all.js
 "use strict";
-const files = ["test-bracket.js", "test-prune-undo.js", "test-branch-text.js", "test-parsers.js", "test-state.js", "test-presov-2026.js", "test-ap14-invoice-form.js", "test-owner-invoice-form.js"];
+const files = ["test-bracket.js", "test-prune-undo.js", "test-branch-text.js", "test-parsers.js", "test-state.js", "test-presov-2026.js", "test-ap14-invoice-form.js", "test-owner-invoice-form.js", "test-owner-invoice-cloud-form.js"];
 for (const f of files) {
   try { require("./" + f); }
   catch (e) {
