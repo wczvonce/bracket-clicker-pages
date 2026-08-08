@@ -1,13 +1,15 @@
 (function () {
   "use strict";
 
-  var FORM_ENDPOINT = "https://formsubmit.co/ajax/povraznikovav@gmail.com";
+  // Production URL of the separate, low-privilege public intake web app.
+  var INTAKE_ENDPOINT = "https://script.google.com/macros/s/AKfycbwD7RRz5nJdp6FsU3vL1CTgsPNwXPuCrx1ad9JMBa8LQNDYZCTltMAtN48IRzb8NsYo/exec";
+  var INTAKE_ACK_CHANNEL = "booking-invoice-intake-v1";
   var REQUEST_ID_PATTERN = /^web-[0-9a-f]{32}$/;
   var BOOKING_ID_PATTERN = /^[0-9]{6,20}$/;
   var PROPERTY_CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{0,31}$/;
   var ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
   var MAX_TOKEN_LENGTH = 8192;
-  var SUBMIT_TIMEOUT_MS = 25000;
+  var SUBMIT_TIMEOUT_MS = 120000;
 
   var PROPERTY_LABELS = Object.freeze({
     APT7: "Apartmán 7 · Milvar",
@@ -151,9 +153,8 @@
 
   function createPayload(token, claims, values) {
     return {
-      _subject: "[FAKTURA-DOPLNENIE] " + claims.requestId,
-      _template: "table",
-      _captcha: "false",
+      action: "owner_completion",
+      source_site: "wczvonce.github.io",
       owner_form_version: "2",
       owner_form_token: token,
       request_id: claims.requestId,
@@ -162,16 +163,181 @@
       check_out: values.checkOut,
       total_gross: values.totalGross,
       booking_id: values.bookingId,
-      email_verified: "true",
-      confirmed_guest_name: claims.guestName
+      email_verified: "true"
     };
   }
 
-  function formSubmitAccepted(responseData) {
-    return Boolean(
-      responseData &&
-      (responseData.success === true || responseData.success === "true")
-    );
+  function createAckNonce(cryptoApi) {
+    var source = cryptoApi || globalThis.crypto;
+    if (!source || typeof source.getRandomValues !== "function") {
+      throw new Error("secure-random-unavailable");
+    }
+    var bytes = new Uint8Array(16);
+    source.getRandomValues(bytes);
+    return Array.from(bytes, function (byte) {
+      return byte.toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  function isValidIntakeEndpoint(endpoint) {
+    try {
+      var parsed = new URL(endpoint);
+      return parsed.protocol === "https:" &&
+        parsed.hostname === "script.google.com" &&
+        /^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(parsed.pathname) &&
+        !parsed.search &&
+        !parsed.hash &&
+        !parsed.username &&
+        !parsed.password;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function transportError(code) {
+    var error = new Error(code);
+    error.code = code;
+    return error;
+  }
+
+  function isSourceInsideFrame(sourceWindow, frameWindow) {
+    var current = sourceWindow;
+    for (var depth = 0; current && depth < 8; depth += 1) {
+      if (current === frameWindow) return true;
+      try {
+        var parent = current.parent;
+        if (!parent || parent === current) return false;
+        current = parent;
+      } catch (error) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  function isAllowedAckOrigin(origin) {
+    try {
+      var parsed = new URL(origin);
+      if (parsed.protocol !== "https:" || parsed.port || parsed.pathname !== "/") return false;
+      return parsed.hostname === "script.google.com" ||
+        parsed.hostname === "script.googleusercontent.com" ||
+        /^[a-z0-9-]+-script\.googleusercontent\.com$/.test(parsed.hostname);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function startUrlEncodedIframePost(endpoint, payload, callbacks, options) {
+    var settings = options || {};
+    var targetDocument = settings.document || document;
+    var targetWindow = settings.window || window;
+    var scheduleTimeout = settings.setTimeout || setTimeout;
+    var cancelTimeout = settings.clearTimeout || clearTimeout;
+    var timeoutMs = Number.isFinite(settings.timeoutMs) ? settings.timeoutMs : SUBMIT_TIMEOUT_MS;
+    var nonce = settings.nonce || createAckNonce(settings.crypto);
+    var handlers = callbacks || {};
+
+    if (!isValidIntakeEndpoint(endpoint)) throw transportError("invalid-endpoint");
+    if (!/^[A-Za-z0-9_-]{22,96}$/.test(nonce)) throw transportError("invalid-nonce");
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw transportError("invalid-payload");
+    }
+
+    var frame = targetDocument.createElement("iframe");
+    var form = targetDocument.createElement("form");
+    var frameName = "booking_invoice_intake_" + nonce;
+    var settled = false;
+    var timer = null;
+
+    frame.name = frameName;
+    frame.title = "Bezpečné odoslanie údajov";
+    frame.hidden = true;
+    frame.referrerPolicy = "no-referrer";
+    frame.setAttribute("sandbox", "allow-scripts allow-same-origin");
+
+    form.method = "POST";
+    form.action = endpoint;
+    form.target = frameName;
+    form.enctype = "application/x-www-form-urlencoded";
+    form.acceptCharset = "UTF-8";
+    form.hidden = true;
+
+    var fields = Object.assign({}, payload, { ack_nonce: nonce });
+    Object.keys(fields).forEach(function (name) {
+      var input = targetDocument.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = String(fields[name] == null ? "" : fields[name]);
+      form.appendChild(input);
+    });
+
+    function cleanup() {
+      targetWindow.removeEventListener("message", onMessage);
+      frame.removeEventListener("error", onFrameError);
+      if (timer !== null) cancelTimeout(timer);
+      if (form.parentNode) form.parentNode.removeChild(form);
+      if (frame.parentNode) frame.parentNode.removeChild(frame);
+    }
+
+    function finish(ok, value) {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (ok) {
+        if (typeof handlers.resolve === "function") handlers.resolve(value);
+      } else if (typeof handlers.reject === "function") {
+        handlers.reject(value);
+      }
+    }
+
+    function onMessage(event) {
+      var data = event && event.data;
+      if (
+        !event ||
+        !isSourceInsideFrame(event.source, frame.contentWindow) ||
+        !isAllowedAckOrigin(event.origin) ||
+        !data ||
+        typeof data !== "object" ||
+        data.channel !== INTAKE_ACK_CHANNEL ||
+        data.ack_nonce !== nonce
+      ) {
+        return;
+      }
+      if (data.ok === true) {
+        finish(true, data);
+      } else {
+        finish(false, transportError(cleanText(data.code, 80) || "rejected"));
+      }
+    }
+
+    function onFrameError() {
+      finish(false, transportError("transport"));
+    }
+
+    targetWindow.addEventListener("message", onMessage);
+    frame.addEventListener("error", onFrameError);
+    targetDocument.body.appendChild(frame);
+    targetDocument.body.appendChild(form);
+    timer = scheduleTimeout(function () {
+      finish(false, transportError("timeout"));
+    }, timeoutMs);
+
+    try {
+      form.submit();
+    } catch (error) {
+      finish(false, transportError("transport"));
+    }
+
+    return Object.freeze({
+      nonce: nonce,
+      cancel: function () { finish(false, transportError("cancelled")); }
+    });
+  }
+
+  function postUrlEncodedToIframe(endpoint, payload, options) {
+    return new Promise(function (resolve, reject) {
+      startUrlEncodedIframePost(endpoint, payload, { resolve: resolve, reject: reject }, options);
+    });
   }
 
   function setHidden(element, hidden) {
@@ -180,6 +346,18 @@
 
   function scrubTokenFromUrl() {
     history.replaceState(null, document.title, location.pathname);
+  }
+
+  function showSubmissionAccepted(form, formPanel, successPanel) {
+    form.querySelectorAll("input, select, button").forEach(function (element) {
+      element.disabled = true;
+    });
+    // Keep the capability in the URL fragment until the intake app confirms
+    // receipt. This lets a mobile refresh recover from a dropped connection.
+    scrubTokenFromUrl();
+    setHidden(formPanel, true);
+    setHidden(successPanel, false);
+    successPanel.focus();
   }
 
   function initialize() {
@@ -286,48 +464,16 @@
       button.textContent = "Odosielam…";
       status.textContent = "Údaje sa bezpečne odosielajú.";
 
-      var controller = typeof AbortController === "function" ? new AbortController() : null;
-      var timeout = controller
-        ? setTimeout(function () { controller.abort(); }, SUBMIT_TIMEOUT_MS)
-        : null;
       try {
-        var options = {
-          method: "POST",
-          credentials: "omit",
-          cache: "no-store",
-          // FormSubmit odmieta poziadavky bez dokazatelneho weboveho povodu.
-          // Pri cross-origin poziadavke sa posle iba origin; fragment s tokenom
-          // sa podla weboveho standardu do Referer hlavicky nikdy nezahrna.
-          referrerPolicy: "strict-origin-when-cross-origin",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify(createPayload(token, claims, values))
-        };
-        if (controller) options.signal = controller.signal;
-        var response = await fetch(FORM_ENDPOINT, options);
-        var responseData = await response.json().catch(function () { return null; });
-        if (!response.ok || !formSubmitAccepted(responseData)) throw new Error("submit");
-
-        form.querySelectorAll("input, select, button").forEach(function (element) {
-          element.disabled = true;
-        });
-        // Fragment sa neposiela serveru ani v Referer hlavičke. Ponecháme ho
-        // do úspechu, aby formulár prežil obnovenie alebo ukončenie karty v mobile.
-        scrubTokenFromUrl();
-        setHidden(formPanel, true);
-        setHidden(successPanel, false);
-        successPanel.focus();
+        await postUrlEncodedToIframe(INTAKE_ENDPOINT, createPayload(token, claims, values));
+        showSubmissionAccepted(form, formPanel, successPanel);
       } catch (error) {
-        formError.textContent = "Odoslanie sa nemuselo dokončiť. Neodosielajte formulár hneď znova. Počkajte jednu minútu a skontrolujte e-mail; ak faktúra nepríde, skúste odoslanie znova alebo údaje doplňte odpoveďou na pôvodný e-mail.";
+        formError.textContent = "Nepodarilo sa potvrdiť prijatie údajov na spracovanie. Neodosielajte formulár hneď znova. Skontrolujte pripojenie, chvíľu počkajte a potom skúste odoslanie zopakovať.";
         setHidden(formError, false);
         formError.focus();
         button.disabled = false;
         button.textContent = "Vytvoriť a odoslať faktúru";
         status.textContent = "";
-      } finally {
-        if (timeout !== null) clearTimeout(timeout);
       }
     });
   }
@@ -337,8 +483,15 @@
     normalizeGross: normalizeGross,
     validateValues: validateValues,
     createPayload: createPayload,
-    formSubmitAccepted: formSubmitAccepted,
+    createAckNonce: createAckNonce,
+    isValidIntakeEndpoint: isValidIntakeEndpoint,
+    isSourceInsideFrame: isSourceInsideFrame,
+    isAllowedAckOrigin: isAllowedAckOrigin,
+    startUrlEncodedIframePost: startUrlEncodedIframePost,
+    postUrlEncodedToIframe: postUrlEncodedToIframe,
     scrubTokenFromUrl: scrubTokenFromUrl,
+    showSubmissionAccepted: showSubmissionAccepted,
+    intakeEndpoint: INTAKE_ENDPOINT,
     initialize: initialize
   });
   if (globalThis.__OWNER_INVOICE_TEST__) {
