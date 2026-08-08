@@ -15,22 +15,22 @@ test("AP14 fakturačný formulár obsahuje údaje potrebné pre automatizáciu",
     assert.ok(html.includes(`id="${id}"`), `chýba pole ${id}`);
   }
   for (const value of [
-    "schema_version:'3'", "property_code:'APT14'", "source_site:INVOICE_SOURCE_SITE",
+    "action:'guest_request'", "schema_version:'4'", "property_code:'APT14'", "source_site:INVOICE_SOURCE_SITE",
+    "guest_name:", "street:", "postal_code:", "city:", "country:",
+    "company_id:", "tax_id:", "vat_id:", "guest_email:", "booking_id:", "note:", "_honey:",
     "email_confirmed:String(", "electronic_delivery_consent:String(",
-    "'[FAKTURA-ZIADOST][APT14] Apartmán 14, Školská 9'",
-    "getOrCreateInvoiceRequestId", "povraznikovav@gmail.com",
-    "INVOICE_OWNER_NEXT_STEP",
-    "Ďalší krok",
-    "Bezpečný odkaz na doplnenie pobytu a ceny príde samostatným e-mailom do schránky majiteľa do jednej minúty.",
-    "const response=await r.json().catch(()=>null)",
-    "(response.success!==true&&response.success!=='true')",
+    "getOrCreateInvoiceRequestId",
+    "postInvoiceRequest(data)",
+    "Majiteľ dostane do jednej minúty jeden e-mail s údajmi a odkazom",
   ]) {
     assert.ok(html.includes(value), `chýba odosielaný údaj ${value}`);
   }
-  assert.ok(!html.includes("__APPS_SCRIPT_EXEC_URL__"), "produkčný endpoint nesmie zostať placeholder");
-  assert.ok(!html.includes("script.google.com/macros/s/"), "žiadosť nesmie posielať súkromný Apps Script odkaz");
+  assert.ok(html.includes("https://script.google.com/macros/s/AKfycbwD7RRz5nJdp6FsU3vL1CTgsPNwXPuCrx1ad9JMBa8LQNDYZCTltMAtN48IRzb8NsYo/exec"), "chýba produkčný verejný intake endpoint");
+  assert.ok(!html.includes("REPLACE_WITH_PUBLIC_INTAKE_DEPLOYMENT_ID"), "produkčná stránka nesmie obsahovať placeholder endpointu");
   assert.ok(!html.includes("accounts.google.com/AccountChooser"), "žiadosť nesmie posielať AccountChooser odkaz");
   assert.ok(!html.includes("buildInvoiceOwnerLink"), "starý builder odkazu nesmie zostať v stránke");
+  assert.ok(!html.includes("formsubmit.co"), "žiadosť sa už nesmie posielať cez FormSubmit");
+  assert.ok(!html.includes("povraznikovav@gmail.com"), "web hosťa nesmie poznať cieľový e-mail majiteľa");
 });
 
 test("AP14 formulár už neposiela starú nejednoznačnú schému", () => {
@@ -38,16 +38,43 @@ test("AP14 formulár už neposiela starú nejednoznačnú schému", () => {
   assert.ok(!html.includes("'Fakturačná adresa':bill.value"));
 });
 
-test("AP14 potvrdí odoslanie iba po kladnej JSON odpovedi FormSubmit", () => {
-  const guard = "if(!r.ok||!response||(response.success!==true&&response.success!=='true'))";
-  const guardIndex = html.indexOf(guard);
-  const resetIndex = html.indexOf("e.target.reset()", guardIndex);
-  const clearIndex = html.indexOf("clearInvoiceRequestId()", guardIndex);
-  assert.ok(guardIndex >= 0, "chýba prísna kontrola JSON odpovede");
-  assert.ok(resetIndex > guardIndex, "formulár sa nesmie resetovať pred potvrdením odpovede");
-  assert.ok(clearIndex > guardIndex, "request_id sa nesmie vymazať pred potvrdením odpovede");
+test("AP14 vymaže request_id iba po platnom pozitívnom ACK", () => {
+  const ackGuard = "data.channel!==INTAKE_ACK_CHANNEL||data.ack_nonce!==nonce";
+  const ackIndex = html.indexOf(ackGuard);
+  const awaitIndex = html.indexOf("await postInvoiceRequest(data)", ackIndex);
+  const resetIndex = html.indexOf("e.target.reset()", awaitIndex);
+  const clearIndex = html.indexOf("clearInvoiceRequestId()", awaitIndex);
+  assert.ok(ackIndex >= 0, "chýba kontrola kanála a nonce ACK");
+  assert.ok(html.includes("data.ok===true?finish(true,data)"), "iba pozitívny ACK smie potvrdiť prijatie");
+  assert.ok(awaitIndex > ackIndex, "odoslanie musí čakať na ACK");
+  assert.ok(resetIndex > awaitIndex, "formulár sa nesmie resetovať pred ACK");
+  assert.ok(clearIndex > awaitIndex, "request_id sa nesmie vymazať pred ACK");
   assert.strictEqual((html.match(/clearInvoiceRequestId\(\)/g) || []).length, 2,
     "request_id sa smie mazať iba definíciou funkcie a po úspechu");
+});
+
+test("AP14 používa URL-encoded sandbox iframe a overuje pôvod aj zdroj ACK", () => {
+  for (const value of [
+    "form.enctype='application/x-www-form-urlencoded'",
+    "frame.setAttribute('sandbox','allow-scripts allow-same-origin')",
+    "frame.referrerPolicy='no-referrer'",
+    "Object.entries({...payload,ack_nonce:nonce})",
+    "isIntakeAckSource(event.source,frame.contentWindow)",
+    "isAllowedIntakeAckOrigin(event.origin)",
+    "script.googleusercontent.com",
+    "window.removeEventListener('message',onMessage)",
+    "form.remove();frame.remove()",
+    "setTimeout(()=>finish(false,new Error('timeout')),INTAKE_TIMEOUT_MS)",
+  ]) {
+    assert.ok(html.includes(value), `chýba bezpečnostná vlastnosť transportu: ${value}`);
+  }
+});
+
+test("AP14 generuje oddelené 128-bitové request a ACK nonce", () => {
+  const getRandomValuesCalls = html.match(/crypto\.getRandomValues\(bytes\)/g) || [];
+  assert.strictEqual(getRandomValuesCalls.length, 2, "request_id aj ACK nonce musia mať vlastný bezpečný random");
+  assert.ok(html.includes("const bytes=new Uint8Array(16)"), "nonce musí používať 16 bajtov (128 bitov)");
+  assert.ok(html.includes("const nonce=createInvoiceAckNonce()"));
 });
 
 test("inline JavaScript stránky AP14 je syntakticky platný", () => {

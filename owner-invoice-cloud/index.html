@@ -7,10 +7,10 @@
   <meta name="referrer" content="no-referrer">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#173f35">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://formsubmit.co; img-src 'none'; font-src 'none'; base-uri 'none'; form-action https://formsubmit.co; frame-src 'none'; object-src 'none'; media-src 'none'; manifest-src 'none'; worker-src 'none'; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; base-uri 'none'; form-action https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; object-src 'none'; media-src 'none'; manifest-src 'none'; worker-src 'none'; upgrade-insecure-requests">
   <title>Doplnenie údajov k faktúre</title>
-  <link rel="stylesheet" href="./style.css?v=20260807-3">
-  <script src="./app.js?v=20260807-3" defer></script>
+  <link rel="stylesheet" href="./style.css?v=20260808-2">
+  <script src="./app.js?v=20260808-2" defer></script>
 </head>
 <body>
   <header class="page-header">
@@ -99,8 +99,8 @@
 
     <section id="successPanel" class="panel state-panel state-success hidden" role="status" tabindex="-1">
       <div class="success-mark" aria-hidden="true">✓</div>
-      <h2>Údaje boli prijaté</h2>
-      <p>Faktúra sa bezpečne spracuje a odošle do jednej minúty. Pri chybe dostanete e-mail na manuálnu kontrolu.</p>
+      <h2>Údaje boli prijaté na spracovanie</h2>
+      <p>Program ich teraz bezpečne spracuje a vytvorí faktúru. Pri chybe dostanete e-mail na manuálnu kontrolu.</p>
     </section>
   </main>
 </body>
