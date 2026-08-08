@@ -25,6 +25,8 @@ test("AP14 fakturačný formulár obsahuje údaje potrebné pre automatizáciu",
   ]) {
     assert.ok(html.includes(value), `chýba odosielaný údaj ${value}`);
   }
+  assert.ok(html.includes('pattern="[0-9]{6,20}"'), "Booking ID pattern musí byť platný aj v novom Chrome");
+  assert.ok(!html.includes('pattern="[0-9 -]{6,24}"'), "neplatný UnicodeSets pattern nesmie zostať v stránke");
   assert.ok(html.includes("https://script.google.com/macros/s/AKfycbwD7RRz5nJdp6FsU3vL1CTgsPNwXPuCrx1ad9JMBa8LQNDYZCTltMAtN48IRzb8NsYo/exec"), "chýba produkčný verejný intake endpoint");
   assert.ok(!html.includes("REPLACE_WITH_PUBLIC_INTAKE_DEPLOYMENT_ID"), "produkčná stránka nesmie obsahovať placeholder endpointu");
   assert.ok(!html.includes("accounts.google.com/AccountChooser"), "žiadosť nesmie posielať AccountChooser odkaz");
