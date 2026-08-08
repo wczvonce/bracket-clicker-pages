@@ -1,29 +1,56 @@
 (function () {
   "use strict";
 
+  var READY_FLAG = "__AP14_INVOICE_IDEMPOTENCY_READY__";
+  globalThis[READY_FLAG] = false;
+
   var SOURCE_SITE = "apartman14.github.io";
-  var STORAGE_KEY = "booking-invoice-pending-v1:" + SOURCE_SITE;
+  var LEGACY_STORAGE_KEY = "booking-invoice-pending-v1:" + SOURCE_SITE;
+  var STORAGE_KEY_PREFIX = LEGACY_STORAGE_KEY + ":";
+  var LOCK_NAME_PREFIX = "booking-invoice-request-v1:" + SOURCE_SITE + ":";
   var PENDING_TTL_MS = 24 * 60 * 60 * 1000;
   var REQUEST_ID_PATTERN = /^web-[0-9a-f]{32}$/;
   var FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
-  var pendingMemory = null;
 
-  function storageCandidates() {
-    var stores = [];
-    ["localStorage", "sessionStorage"].forEach(function (name) {
-      try {
-        var store = globalThis[name];
-        if (
-          store &&
-          typeof store.getItem === "function" &&
-          typeof store.setItem === "function" &&
-          typeof store.removeItem === "function"
-        ) {
-          stores.push(store);
-        }
-      } catch (error) {}
-    });
-    return stores;
+  function pendingStorageKey(fingerprint) {
+    if (!FINGERPRINT_PATTERN.test(String(fingerprint || ""))) throw new Error("invalid-fingerprint");
+    return STORAGE_KEY_PREFIX + fingerprint;
+  }
+
+  function lockNameForFingerprint(fingerprint) {
+    if (!FINGERPRINT_PATTERN.test(String(fingerprint || ""))) throw new Error("invalid-fingerprint");
+    return LOCK_NAME_PREFIX + fingerprint;
+  }
+
+  function requiredLocalStorage() {
+    try {
+      var store = globalThis.localStorage;
+      if (
+        store &&
+        typeof store.getItem === "function" &&
+        typeof store.setItem === "function" &&
+        typeof store.removeItem === "function"
+      ) {
+        return store;
+      }
+    } catch (error) {}
+    throw new Error("pending-storage-unavailable");
+  }
+
+  function requiredLockManager() {
+    try {
+      var locks = globalThis.navigator && globalThis.navigator.locks;
+      if (locks && typeof locks.request === "function") return locks;
+    } catch (error) {}
+    throw new Error("web-locks-unavailable");
+  }
+
+  function withFingerprintLock(fingerprint, callback) {
+    return requiredLockManager().request(
+      lockNameForFingerprint(fingerprint),
+      { mode: "exclusive" },
+      callback
+    );
   }
 
   function normalizePending(value, now) {
@@ -31,6 +58,7 @@
     var requestId = String(value.requestId || "");
     var fingerprint = String(value.fingerprint || "");
     var expiresAt = Number(value.expiresAt);
+    var state = value.state === "acknowledged" ? "acknowledged" : "pending";
     if (
       !REQUEST_ID_PATTERN.test(requestId) ||
       !FINGERPRINT_PATTERN.test(fingerprint) ||
@@ -40,59 +68,73 @@
     ) {
       return null;
     }
-    return { version: 1, requestId: requestId, fingerprint: fingerprint, expiresAt: expiresAt };
+    return {
+      version: 1,
+      requestId: requestId,
+      fingerprint: fingerprint,
+      expiresAt: expiresAt,
+      state: state
+    };
   }
 
-  function readPending(now) {
-    var currentTime = Number.isFinite(now) ? now : Date.now();
-    var memory = normalizePending(pendingMemory, currentTime);
-    if (memory) return memory;
-    pendingMemory = null;
-    var stores = storageCandidates();
-    for (var index = 0; index < stores.length; index += 1) {
-      var raw = "";
-      try {
-        raw = stores[index].getItem(STORAGE_KEY) || "";
-      } catch (error) {
-        continue;
-      }
-      if (!raw) continue;
-      var parsed = null;
-      try {
-        parsed = normalizePending(JSON.parse(raw), currentTime);
-      } catch (error) {}
-      if (!parsed) {
-        try { stores[index].removeItem(STORAGE_KEY); } catch (error) {}
-        continue;
-      }
-      pendingMemory = parsed;
-      return parsed;
+  function removeKeyConfirmed(key) {
+    var store = requiredLocalStorage();
+    try {
+      store.removeItem(key);
+      if (store.getItem(key) !== null) throw new Error("pending-storage-remove-unconfirmed");
+    } catch (error) {
+      throw new Error("pending-storage-unavailable");
     }
-    return null;
+  }
+
+  function readRecord(key, now, removeInvalid) {
+    var store = requiredLocalStorage();
+    var raw = "";
+    try {
+      raw = store.getItem(key) || "";
+    } catch (error) {
+      throw new Error("pending-storage-unavailable");
+    }
+    if (!raw) return null;
+
+    var parsed = null;
+    try {
+      parsed = normalizePending(JSON.parse(raw), now);
+    } catch (error) {}
+    if (!parsed) {
+      if (removeInvalid !== false) removeKeyConfirmed(key);
+      return null;
+    }
+    return parsed;
   }
 
   function writePending(record) {
-    var stores = storageCandidates();
+    var store = requiredLocalStorage();
+    var key = pendingStorageKey(record.fingerprint);
     var encoded = JSON.stringify(record);
-    for (var index = 0; index < stores.length; index += 1) {
-      try {
-        stores[index].setItem(STORAGE_KEY, encoded);
-        if (stores[index].getItem(STORAGE_KEY) !== encoded) throw new Error("pending-storage-unconfirmed");
-        pendingMemory = record;
-        for (var fallback = index + 1; fallback < stores.length; fallback += 1) {
-          try { stores[fallback].removeItem(STORAGE_KEY); } catch (error) {}
-        }
-        return;
-      } catch (error) {}
+    try {
+      store.setItem(key, encoded);
+      if (store.getItem(key) !== encoded) throw new Error("pending-storage-unconfirmed");
+    } catch (error) {
+      throw new Error("pending-storage-unavailable");
     }
-    throw new Error("pending-storage-unavailable");
   }
 
-  function removePending() {
-    pendingMemory = null;
-    storageCandidates().forEach(function (store) {
-      try { store.removeItem(STORAGE_KEY); } catch (error) {}
-    });
+  function readPending(fingerprint, now) {
+    var exactKey = pendingStorageKey(fingerprint);
+    var exact = readRecord(exactKey, now);
+    if (exact && exact.fingerprint !== fingerprint) {
+      removeKeyConfirmed(exactKey);
+      exact = null;
+    }
+
+    if (exact) return exact;
+
+    var legacy = readRecord(LEGACY_STORAGE_KEY, now, false);
+    if (!legacy || legacy.fingerprint !== fingerprint) return null;
+
+    writePending(legacy);
+    return legacy;
   }
 
   function canonicalPayload(payload) {
@@ -144,33 +186,64 @@
     };
   }
 
-  function getOrCreateRequestId(fingerprint, now) {
-    var currentTime = Number.isFinite(now) ? now : Date.now();
+  async function getOrCreateRequestId(fingerprint, now) {
     if (!FINGERPRINT_PATTERN.test(String(fingerprint || ""))) throw new Error("invalid-fingerprint");
-    var field = document.getElementById("invoiceRequestId");
-    var pending = readPending(currentTime);
-    if (pending && pending.fingerprint === fingerprint) {
-      field.value = pending.requestId;
-      return pending.requestId;
-    }
-    if (typeof globalThis.createInvoiceRequestId !== "function") throw new Error("request-id-unavailable");
-    var requestId = globalThis.createInvoiceRequestId();
-    writePending({
-      version: 1,
-      requestId: requestId,
-      fingerprint: fingerprint,
-      expiresAt: currentTime + PENDING_TTL_MS
+    return await withFingerprintLock(fingerprint, function () {
+      var currentTime = Number.isFinite(now) ? now : Date.now();
+      var field = document.getElementById("invoiceRequestId");
+      var pending = readPending(fingerprint, currentTime);
+      if (pending) {
+        field.value = pending.requestId;
+        return pending.requestId;
+      }
+      if (typeof globalThis.createInvoiceRequestId !== "function") throw new Error("request-id-unavailable");
+      var requestId = globalThis.createInvoiceRequestId();
+      writePending({
+        version: 1,
+        requestId: requestId,
+        fingerprint: fingerprint,
+        expiresAt: currentTime + PENDING_TTL_MS,
+        state: "pending"
+      });
+      field.value = requestId;
+      return requestId;
     });
-    field.value = requestId;
-    return requestId;
   }
 
-  function clearMatchingRequest(requestId, fingerprint, now) {
-    var currentTime = Number.isFinite(now) ? now : Date.now();
+  async function clearMatchingRequest(requestId, fingerprint, now) {
     var field = document.getElementById("invoiceRequestId");
-    if (!field.value || field.value === requestId) field.value = "";
-    var pending = readPending(currentTime);
-    if (pending && pending.requestId === requestId && pending.fingerprint === fingerprint) removePending();
+    if (
+      !REQUEST_ID_PATTERN.test(String(requestId || "")) ||
+      !FINGERPRINT_PATTERN.test(String(fingerprint || ""))
+    ) {
+      return false;
+    }
+
+    return await withFingerprintLock(fingerprint, function () {
+      var currentTime = Number.isFinite(now) ? now : Date.now();
+      var key = pendingStorageKey(fingerprint);
+      var pending = readRecord(key, currentTime);
+      if (!pending) {
+        if (field.value === requestId) field.value = "";
+        return true;
+      }
+      if (
+        pending.requestId !== requestId ||
+        pending.fingerprint !== fingerprint
+      ) {
+        if (field.value === requestId) field.value = "";
+        return false;
+      }
+      writePending({
+        version: 1,
+        requestId: pending.requestId,
+        fingerprint: pending.fingerprint,
+        expiresAt: pending.expiresAt,
+        state: "acknowledged"
+      });
+      if (field.value === requestId) field.value = "";
+      return true;
+    });
   }
 
   if (globalThis.__AP14_INVOICE_IDEMPOTENCY_TEST__) {
@@ -178,28 +251,49 @@
       createFingerprint: createFingerprint,
       getOrCreateRequestId: getOrCreateRequestId,
       clearMatchingRequest: clearMatchingRequest,
-      readPending: readPending,
       payloadFromForm: payloadFromForm,
-      storageKey: STORAGE_KEY
+      legacyStorageKey: LEGACY_STORAGE_KEY,
+      storageKeyForFingerprint: pendingStorageKey,
+      lockNameForFingerprint: lockNameForFingerprint
     });
   }
 
   var form = document.getElementById("form");
-  if (!form || typeof form.onsubmit !== "function") return;
+  if (
+    !form ||
+    typeof form.onsubmit !== "function" ||
+    globalThis.__AP14_INVOICE_BASE_HANDLER_READY__ !== true
+  ) {
+    return;
+  }
   var originalSubmit = form.onsubmit;
   var originalClear = globalThis.clearInvoiceRequestId;
   var activeRequestId = "";
   var activeFingerprint = "";
+  var activeClearPromise = null;
   var preparing = false;
 
   globalThis.clearInvoiceRequestId = function () {
-    if (activeRequestId && activeFingerprint) clearMatchingRequest(activeRequestId, activeFingerprint);
-    if (typeof originalClear === "function") originalClear();
+    var requestId = activeRequestId;
+    var fingerprint = activeFingerprint;
     activeRequestId = "";
     activeFingerprint = "";
+    activeClearPromise =
+      requestId && fingerprint
+        ? clearMatchingRequest(requestId, fingerprint)
+            .then(function (cleared) {
+              if (cleared && typeof originalClear === "function") originalClear();
+              return cleared;
+            })
+            .catch(function (error) {
+              document.getElementById("invoiceRequestId").value = requestId;
+              throw error;
+            })
+        : Promise.resolve(false);
+    return activeClearPromise;
   };
 
-  form.onsubmit = async function (event) {
+  async function wrappedSubmit(event) {
     event.preventDefault();
     if (preparing) return false;
     var guestEmail = document.getElementById("invoiceEmail").value.trim().toLowerCase();
@@ -212,9 +306,30 @@
     preparing = true;
     try {
       var payload = payloadFromForm();
+      var payloadSnapshot = canonicalPayload(payload);
       activeFingerprint = await createFingerprint(payload);
-      activeRequestId = getOrCreateRequestId(activeFingerprint);
-      return await originalSubmit.call(this, event);
+      activeRequestId = await getOrCreateRequestId(activeFingerprint);
+      if (canonicalPayload(payloadFromForm()) !== payloadSnapshot) {
+        var requestField = document.getElementById("invoiceRequestId");
+        if (requestField.value === activeRequestId) requestField.value = "";
+        activeRequestId = "";
+        activeFingerprint = "";
+        document.getElementById("status").textContent =
+          "Údaje sa počas prípravy odoslania zmenili. Skontrolujte ich a odošlite formulár znova.";
+        return false;
+      }
+      var result = await originalSubmit.call(this, event);
+      if (activeClearPromise) {
+        var clearPromise = activeClearPromise;
+        activeClearPromise = null;
+        try {
+          await clearPromise;
+        } catch (clearError) {
+          document.getElementById("status").textContent =
+            "Údaje boli prijaté, ale bezpečný kód sa nepodarilo vyčistiť. Formulár neposielajte znova.";
+        }
+      }
+      return result;
     } catch (error) {
       document.getElementById("status").textContent =
         "Bezpečné opakované odoslanie nie je v tomto prehliadači dostupné. Skúste novší prehliadač.";
@@ -222,5 +337,9 @@
     } finally {
       preparing = false;
     }
-  };
+  }
+
+  form.onsubmit = wrappedSubmit;
+  if (form.onsubmit !== wrappedSubmit) return;
+  globalThis[READY_FLAG] = true;
 })();
