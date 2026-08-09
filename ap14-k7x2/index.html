@@ -8,6 +8,15 @@ const T={sk:{brand:'Ďakujeme za vašu rezerváciu!',title:'Vitajte v apartmáne
   const form=document.getElementById('form');
   const unguardedSubmit=form&&form.onsubmit;
   if(!form)return;
+  const bookingIdInput=document.getElementById('invoiceBookingId');
+  if(bookingIdInput){
+    bookingIdInput.required=false;
+    bookingIdInput.removeAttribute('required');
+    const bookingIdLabel=bookingIdInput.previousElementSibling;
+    if(bookingIdLabel&&!bookingIdLabel.textContent.includes('(voliteľné)')){
+      bookingIdLabel.textContent+=' (voliteľné)';
+    }
+  }
   globalThis.__AP14_INVOICE_BASE_HANDLER_READY__=typeof unguardedSubmit==='function';
   form.onsubmit=function(event){
     if(globalThis.__AP14_INVOICE_IDEMPOTENCY_READY__!==true||typeof unguardedSubmit!=='function'){

@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const { test } = require("./t");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "ap14-k7x2", "index.html"), "utf8");
+const publicWrapper = fs.readFileSync(path.join(__dirname, "..", "apartman-14", "index.html"), "utf8");
 const idempotencyScript = fs.readFileSync(
   path.join(__dirname, "..", "ap14-k7x2", "invoice-idempotency.js"),
   "utf8",
@@ -154,6 +155,8 @@ test("AP14 fakturačný formulár obsahuje údaje potrebné pre automatizáciu",
     assert.ok(html.includes(value), `chýba odosielaný údaj ${value}`);
   }
   assert.ok(html.includes('pattern="[0-9]{6,20}"'), "Booking ID pattern musí byť platný aj v novom Chrome");
+  assert.ok(html.includes("bookingIdInput.removeAttribute('required')"), "Booking ID musí byť voliteľné");
+  assert.ok(html.includes("bookingIdLabel.textContent+=' (voliteľné)'"), "hosť musí vidieť, že Booking ID je voliteľné");
   assert.ok(!html.includes('pattern="[0-9 -]{6,24}"'), "neplatný UnicodeSets pattern nesmie zostať v stránke");
   assert.ok(html.includes("https://script.google.com/macros/s/AKfycbwD7RRz5nJdp6FsU3vL1CTgsPNwXPuCrx1ad9JMBa8LQNDYZCTltMAtN48IRzb8NsYo/exec"), "chýba produkčný verejný intake endpoint");
   assert.ok(!html.includes("REPLACE_WITH_PUBLIC_INTAKE_DEPLOYMENT_ID"), "produkčná stránka nesmie obsahovať placeholder endpointu");
@@ -228,6 +231,10 @@ test("AP14 načíta strict idempotency helper bez zmeny produkčného endpointu"
   new vm.Script(idempotencyScript);
 });
 
+test("AP14 verejný wrapper načíta novú verziu voliteľného Booking ID", () => {
+  assert.ok(publicWrapper.includes("../ap14-k7x2/?v=20260809-3"));
+});
+
 test("AP14 bez načítaného helpera zastaví pôvodný submit pred ID aj POST", async () => {
   const guardScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
     .map(match => match[1])
@@ -243,6 +250,12 @@ test("AP14 bez načítaného helpera zastaví pôvodný submit pred ID aj POST",
   let requestIdCalls = 0;
   let postCalls = 0;
   const status = { textContent: "" };
+  const bookingLabel = { textContent: "Číslo rezervácie Booking.com" };
+  const bookingInput = {
+    required: true,
+    previousElementSibling: bookingLabel,
+    removeAttribute(name) { if (name === "required") this.required = false; },
+  };
   const form = {
     async onsubmit() {
       requestIdCalls += 1;
@@ -254,6 +267,7 @@ test("AP14 bez načítaného helpera zastaví pôvodný submit pred ID aj POST",
       getElementById(id) {
         if (id === "form") return form;
         if (id === "status") return status;
+        if (id === "invoiceBookingId") return bookingInput;
         throw new Error(`unexpected field ${id}`);
       },
     },
@@ -261,6 +275,8 @@ test("AP14 bez načítaného helpera zastaví pôvodný submit pred ID aj POST",
   vm.runInNewContext(guardScript, sandbox, { filename: "ap14-ready-guard.js" });
   assert.strictEqual(sandbox.__AP14_INVOICE_IDEMPOTENCY_READY__, false);
   assert.strictEqual(sandbox.__AP14_INVOICE_BASE_HANDLER_READY__, true);
+  assert.strictEqual(bookingInput.required, false);
+  assert.match(bookingLabel.textContent, /\(voliteľné\)$/);
   await form.onsubmit({ preventDefault() { prevented += 1; } });
   assert.strictEqual(prevented, 1);
   assert.strictEqual(requestIdCalls, 0);
@@ -269,11 +285,17 @@ test("AP14 bez načítaného helpera zastaví pôvodný submit pred ID aj POST",
 
   const missingStatus = { textContent: "" };
   const missingForm = { onsubmit: null };
+  const missingBookingInput = {
+    required: true,
+    previousElementSibling: { textContent: "Číslo rezervácie Booking.com" },
+    removeAttribute(name) { if (name === "required") this.required = false; },
+  };
   const missingSandbox = {
     document: {
       getElementById(id) {
         if (id === "form") return missingForm;
         if (id === "status") return missingStatus;
+        if (id === "invoiceBookingId") return missingBookingInput;
         throw new Error(`unexpected field ${id}`);
       },
     },
