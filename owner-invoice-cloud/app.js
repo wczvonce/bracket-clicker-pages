@@ -5,7 +5,6 @@
   var INTAKE_ENDPOINT = "https://script.google.com/macros/s/AKfycbwD7RRz5nJdp6FsU3vL1CTgsPNwXPuCrx1ad9JMBa8LQNDYZCTltMAtN48IRzb8NsYo/exec";
   var INTAKE_ACK_CHANNEL = "booking-invoice-intake-v1";
   var REQUEST_ID_PATTERN = /^web-[0-9a-f]{32}$/;
-  var BOOKING_ID_PATTERN = /^[0-9]{6,20}$/;
   var PROPERTY_CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{0,31}$/;
   var ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
   var MAX_TOKEN_LENGTH = 8192;
@@ -100,13 +99,10 @@
       throw new Error(expiration <= currentTime ? "expired" : "claims");
     }
 
-    var suppliedBookingId = String(parsed.bid || "").trim();
-    var bookingId = BOOKING_ID_PATTERN.test(suppliedBookingId) ? suppliedBookingId : "";
     return Object.freeze({
       version: 2,
       requestId: requestId,
       guestName: guestName,
-      bookingId: bookingId,
       expiration: expiration,
       properties: normalizeProperties(parsed)
     });
@@ -127,9 +123,6 @@
   }
 
   function validateValues(values, claims) {
-    if (!BOOKING_ID_PATTERN.test(values.bookingId)) {
-      return "Doplňte platné Booking ID (6 až 20 číslic).";
-    }
     var allowedProperty = claims.properties.some(function (property) {
       return property.code === values.propertyCode;
     });
@@ -162,7 +155,6 @@
       check_in: values.checkIn,
       check_out: values.checkOut,
       total_gross: values.totalGross,
-      booking_id: values.bookingId,
       email_verified: "true"
     };
   }
@@ -371,7 +363,6 @@
     var propertySelect = document.getElementById("propertyCode");
     var singleProperty = document.getElementById("singleProperty");
     var singlePropertyLabel = document.getElementById("singlePropertyLabel");
-    var bookingIdInput = document.getElementById("bookingId");
     var checkInInput = document.getElementById("checkIn");
     var checkOutInput = document.getElementById("checkOut");
     var totalGrossInput = document.getElementById("totalGross");
@@ -404,8 +395,6 @@
     }
 
     document.getElementById("guestName").textContent = claims.guestName;
-    document.getElementById("bookingSummary").textContent = claims.bookingId || "Neuvedené";
-    bookingIdInput.value = claims.bookingId;
 
     if (claims.properties.length === 1) {
       // Skryty required <select> by inak zablokoval nativne odoslanie formulara
@@ -445,7 +434,6 @@
         propertyCode: claims.properties.length === 1
           ? claims.properties[0].code
           : propertySelect.value,
-        bookingId: bookingIdInput.value.trim(),
         checkIn: checkInInput.value,
         checkOut: checkOutInput.value,
         totalGross: normalizeGross(totalGrossInput.value),
