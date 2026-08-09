@@ -7,6 +7,7 @@ const vm = require("node:vm");
 const { test } = require("./t");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "ap14-k7x2", "index.html"), "utf8");
+const compactHtml = html.replace(/\s+/g, "");
 const publicWrapper = fs.readFileSync(path.join(__dirname, "..", "apartman-14", "index.html"), "utf8");
 const idempotencyScript = fs.readFileSync(
   path.join(__dirname, "..", "ap14-k7x2", "invoice-idempotency.js"),
@@ -80,6 +81,12 @@ function loadAp14Idempotency({
     invoiceTaxId: { value: "" },
     invoiceVatId: { value: "" },
     invoiceBookingId: { value: "123456789" },
+    invoiceCheckIn: { value: "2026-08-01" },
+    invoiceCheckOut: {
+      value: "2026-08-03",
+      validationMessage: "",
+      setCustomValidity(message) { this.validationMessage = message; },
+    },
     invoiceNote: { value: "" },
     invoiceEmailConfirmedCheck: { checked: true },
     invoiceConsent: { checked: true },
@@ -91,6 +98,7 @@ function loadAp14Idempotency({
   let originalClearCalls = 0;
   let sandbox;
   const form = {
+    reportValidity() { return !fields.invoiceCheckOut.validationMessage; },
     async onsubmit() {
       submittedIds.push(fields.invoiceRequestId.value);
       if (clearOnSubmit) sandbox.clearInvoiceRequestId();
@@ -139,24 +147,30 @@ test("AP14 fakturačný formulár obsahuje údaje potrebné pre automatizáciu",
   for (const id of [
     "invoiceName", "invoiceStreet", "invoicePostalCode", "invoiceCity",
     "invoiceCountry", "invoiceEmail", "invoiceEmailConfirm", "invoiceBookingId",
+    "invoiceCheckIn", "invoiceCheckOut",
     "invoiceConsent", "invoiceNote",
   ]) {
     assert.ok(html.includes(`id="${id}"`), `chýba pole ${id}`);
   }
   for (const value of [
-    "action:'guest_request'", "schema_version:'4'", "property_code:'APT14'", "source_site:INVOICE_SOURCE_SITE",
+    'action:"guest_request"', 'schema_version:"5"', 'property_code:"APT14"', "source_site:INVOICE_SOURCE_SITE",
     "guest_name:", "street:", "postal_code:", "city:", "country:",
-    "company_id:", "tax_id:", "vat_id:", "guest_email:", "booking_id:", "note:", "_honey:",
+    "company_id:", "tax_id:", "vat_id:", "guest_email:", "booking_id:", "check_in:", "check_out:", "note:", "_honey:",
     "email_confirmed:String(", "electronic_delivery_consent:String(",
     "getOrCreateInvoiceRequestId",
     "postInvoiceRequest(data)",
-    "Majiteľ dostane do jednej minúty jeden e-mail s údajmi a odkazom",
   ]) {
-    assert.ok(html.includes(value), `chýba odosielaný údaj ${value}`);
+    assert.ok(compactHtml.includes(value), `chýba odosielaný údaj ${value}`);
   }
+  assert.ok(html.includes("Majiteľ dostane do jednej minúty jeden e-mail s údajmi a odkazom"));
+  for (const id of ["invoiceCheckIn", "invoiceCheckOut"]) {
+    const input = html.match(new RegExp(`<input(?=[^>]*id="${id}")(?=[^>]*type="date")(?=[^>]*\\brequired\\b)[^>]*>`));
+    assert.ok(input, `chýba dátumové pole ${id}`);
+  }
+  assert.ok(compactHtml.includes('id="invoiceSchemaVersion"name="schema_version"value="5"'));
   assert.ok(html.includes('pattern="[0-9]{6,20}"'), "Booking ID pattern musí byť platný aj v novom Chrome");
-  assert.ok(html.includes("bookingIdInput.removeAttribute('required')"), "Booking ID musí byť voliteľné");
-  assert.ok(html.includes("bookingIdLabel.textContent+=' (voliteľné)'"), "hosť musí vidieť, že Booking ID je voliteľné");
+  assert.ok(compactHtml.includes('bookingIdInput.removeAttribute("required")'), "Booking ID musí byť voliteľné");
+  assert.ok(compactHtml.includes('bookingIdLabel.textContent+="(voliteľné)"'), "hosť musí vidieť, že Booking ID je voliteľné");
   assert.ok(!html.includes('pattern="[0-9 -]{6,24}"'), "neplatný UnicodeSets pattern nesmie zostať v stránke");
   assert.ok(html.includes("https://script.google.com/macros/s/AKfycbwD7RRz5nJdp6FsU3vL1CTgsPNwXPuCrx1ad9JMBa8LQNDYZCTltMAtN48IRzb8NsYo/exec"), "chýba produkčný verejný intake endpoint");
   assert.ok(!html.includes("REPLACE_WITH_PUBLIC_INTAKE_DEPLOYMENT_ID"), "produkčná stránka nesmie obsahovať placeholder endpointu");
@@ -173,12 +187,12 @@ test("AP14 formulár už neposiela starú nejednoznačnú schému", () => {
 
 test("AP14 vymaže request_id iba po platnom pozitívnom ACK", () => {
   const ackGuard = "data.channel!==INTAKE_ACK_CHANNEL||data.ack_nonce!==nonce";
-  const ackIndex = html.indexOf(ackGuard);
-  const awaitIndex = html.indexOf("await postInvoiceRequest(data)", ackIndex);
-  const resetIndex = html.indexOf("e.target.reset()", awaitIndex);
-  const clearIndex = html.indexOf("clearInvoiceRequestId()", awaitIndex);
+  const ackIndex = compactHtml.indexOf(ackGuard);
+  const awaitIndex = compactHtml.indexOf("awaitpostInvoiceRequest(data)", ackIndex);
+  const resetIndex = compactHtml.indexOf("e.target.reset()", awaitIndex);
+  const clearIndex = compactHtml.indexOf("clearInvoiceRequestId()", awaitIndex);
   assert.ok(ackIndex >= 0, "chýba kontrola kanála a nonce ACK");
-  assert.ok(html.includes("data.ok===true?finish(true,data)"), "iba pozitívny ACK smie potvrdiť prijatie");
+  assert.ok(compactHtml.includes("data.ok===true?finish(true,data)"), "iba pozitívny ACK smie potvrdiť prijatie");
   assert.ok(awaitIndex > ackIndex, "odoslanie musí čakať na ACK");
   assert.ok(resetIndex > awaitIndex, "formulár sa nesmie resetovať pred ACK");
   assert.ok(clearIndex > awaitIndex, "request_id sa nesmie vymazať pred ACK");
@@ -197,21 +211,21 @@ test("AP14 používa URL-encoded sandbox iframe a overuje pôvod aj zdroj ACK", 
     "script.googleusercontent.com",
     "window.removeEventListener('message',onMessage)",
     "form.remove();frame.remove()",
-    "setTimeout(()=>finish(false,new Error('timeout')),INTAKE_TIMEOUT_MS)",
+    "setTimeout(()=>finish(false,new Error('timeout')),INTAKE_TIMEOUT_MS,)",
   ]) {
-    assert.ok(html.includes(value), `chýba bezpečnostná vlastnosť transportu: ${value}`);
+    assert.ok(compactHtml.includes(value.replace(/'/g, '"').replace(/\s+/g, "")), `chýba bezpečnostná vlastnosť transportu: ${value}`);
   }
 });
 
 test("AP14 generuje oddelené 128-bitové request a ACK nonce", () => {
   const getRandomValuesCalls = html.match(/crypto\.getRandomValues\(bytes\)/g) || [];
   assert.strictEqual(getRandomValuesCalls.length, 2, "request_id aj ACK nonce musia mať vlastný bezpečný random");
-  assert.ok(html.includes("const bytes=new Uint8Array(16)"), "nonce musí používať 16 bajtov (128 bitov)");
-  assert.ok(html.includes("const nonce=createInvoiceAckNonce()"));
+  assert.ok(compactHtml.includes("constbytes=newUint8Array(16)"), "nonce musí používať 16 bajtov (128 bitov)");
+  assert.ok(compactHtml.includes("constnonce=createInvoiceAckNonce()"));
 });
 
 test("AP14 načíta strict idempotency helper bez zmeny produkčného endpointu", () => {
-  assert.ok(html.includes('<script src="./invoice-idempotency.js?v=20260809-2"></script>'));
+  assert.ok(compactHtml.includes('<scriptsrc="./invoice-idempotency.js?v=20260809-3"></script>'));
   assert.ok(idempotencyScript.includes('var LEGACY_STORAGE_KEY = "booking-invoice-pending-v1:" + SOURCE_SITE'));
   assert.ok(idempotencyScript.includes('var STORAGE_KEY_PREFIX = LEGACY_STORAGE_KEY + ":"'));
   assert.ok(idempotencyScript.includes('crypto.subtle.digest("SHA-256"'));
@@ -231,8 +245,54 @@ test("AP14 načíta strict idempotency helper bez zmeny produkčného endpointu"
   new vm.Script(idempotencyScript);
 });
 
-test("AP14 verejný wrapper načíta novú verziu voliteľného Booking ID", () => {
-  assert.ok(publicWrapper.includes("../ap14-k7x2/?v=20260809-3"));
+test("AP14 verejný wrapper načíta novú verziu formulára s dátumami pobytu", () => {
+  assert.ok(publicWrapper.includes("../ap14-k7x2/?v=20260809-4"));
+});
+
+test("AP14 overí poradie dátumov pred pridelením request_id a POSTom", () => {
+  const validationIndex = compactHtml.indexOf("validateInvoiceStayDates();");
+  const validityIndex = compactHtml.indexOf("e.target.reportValidity()", validationIndex);
+  const requestIdIndex = compactHtml.indexOf("getOrCreateInvoiceRequestId()", validityIndex);
+  const postIndex = compactHtml.indexOf("awaitpostInvoiceRequest(data)", requestIdIndex);
+  assert.ok(validationIndex >= 0, "chýba kontrola dátumov pobytu");
+  assert.ok(compactHtml.includes('checkOut.value<=checkIn.value'));
+  assert.ok(compactHtml.includes('checkOut.min=checkIn.value||""'));
+  assert.ok(validityIndex > validationIndex, "formulár musí zobraziť natívnu chybu dátumu");
+  assert.ok(requestIdIndex > validityIndex, "neplatný dátum nesmie dostať request_id");
+  assert.ok(postIndex > requestIdIndex, "neplatný dátum sa nesmie odoslať");
+  const helperValidation = idempotencyScript.indexOf("if (!validateStayDatesBeforePrepare()) return false");
+  const helperPayload = idempotencyScript.indexOf("var payload = payloadFromForm()", helperValidation);
+  const helperFingerprint = idempotencyScript.indexOf("activeFingerprint = await createFingerprint(payload)", helperPayload);
+  const helperRequestId = idempotencyScript.indexOf("activeRequestId = await getOrCreateRequestId", helperFingerprint);
+  assert.ok(helperValidation >= 0, "idempotency wrapper musí overiť dátumy");
+  assert.ok(helperPayload > helperValidation);
+  assert.ok(helperFingerprint > helperPayload);
+  assert.ok(helperRequestId > helperFingerprint);
+});
+
+test("AP14 zmena dátumu pobytu vytvorí odlišný idempotency fingerprint", async () => {
+  const instance = loadAp14Idempotency({
+    sessionStorage: memoryStorage(),
+    localStorage: memoryStorage(),
+    requestIds: ["web-78787878787878787878787878787878"],
+  });
+  const original = await instance.api.createFingerprint(instance.api.payloadFromForm());
+  instance.fields.invoiceCheckOut.value = "2026-08-04";
+  const changed = await instance.api.createFingerprint(instance.api.payloadFromForm());
+  assert.notStrictEqual(changed, original);
+});
+
+test("AP14 neplatné poradie dátumov nepridelí request_id ani nespustí POST", async () => {
+  const instance = loadAp14Idempotency({
+    sessionStorage: memoryStorage(),
+    localStorage: memoryStorage(),
+    requestIds: ["web-79797979797979797979797979797979"],
+  });
+  instance.fields.invoiceCheckOut.value = instance.fields.invoiceCheckIn.value;
+  await instance.form.onsubmit({ preventDefault() {} });
+  assert.equal(instance.requestIdCalls, 0);
+  assert.deepEqual(instance.submittedIds, []);
+  assert.match(instance.fields.invoiceCheckOut.validationMessage, /po dátume príchodu/);
 });
 
 test("AP14 bez načítaného helpera zastaví pôvodný submit pred ID aj POST", async () => {
