@@ -133,6 +133,14 @@
     return amount.toFixed(2);
   }
 
+  function normalizeInvoiceNote(value) {
+    if (typeof value !== "string") return "";
+    return value
+      .replace(/\r\n?/g, "\n")
+      .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+      .trim();
+  }
+
   function validateValues(values, claims) {
     var allowedProperty = claims.properties.some(function (property) {
       return property.code === values.propertyCode;
@@ -148,6 +156,12 @@
     }
     if (!values.totalGross) {
       return "Doplňte platnú celkovú cenu od 0,01 do 10 000 EUR.";
+    }
+    if (String(values.invoiceNote || "").length > 500) {
+      return "Poznámka na faktúre môže mať najviac 500 znakov.";
+    }
+    if (/^=/.test(String(values.invoiceNote || ""))) {
+      return "Poznámka na faktúre nesmie začínať znakom =.";
     }
     if (!values.emailVerified) {
       return "Pred odoslaním potvrďte správnosť údajov.";
@@ -166,6 +180,7 @@
       check_in: values.checkIn,
       check_out: values.checkOut,
       total_gross: values.totalGross,
+      invoice_note: String(values.invoiceNote || ""),
       email_verified: "true"
     };
   }
@@ -352,7 +367,7 @@
   }
 
   function showSubmissionAccepted(form, formPanel, successPanel) {
-    form.querySelectorAll("input, select, button").forEach(function (element) {
+    form.querySelectorAll("input, select, textarea, button").forEach(function (element) {
       element.disabled = true;
     });
     // Keep the capability in the URL fragment until the intake app confirms
@@ -377,6 +392,7 @@
     var checkInInput = document.getElementById("checkIn");
     var checkOutInput = document.getElementById("checkOut");
     var totalGrossInput = document.getElementById("totalGross");
+    var invoiceNoteInput = document.getElementById("invoiceNote");
     var emailVerifiedInput = document.getElementById("emailVerified");
     var button = document.getElementById("submitButton");
     var formError = document.getElementById("formError");
@@ -450,6 +466,7 @@
         checkIn: checkInInput.value,
         checkOut: checkOutInput.value,
         totalGross: normalizeGross(totalGrossInput.value),
+        invoiceNote: normalizeInvoiceNote(invoiceNoteInput.value),
         emailVerified: emailVerifiedInput.checked
       };
       var validationError = validateValues(values, claims);
@@ -482,6 +499,7 @@
   var testApi = Object.freeze({
     decodeClaims: decodeClaims,
     normalizeGross: normalizeGross,
+    normalizeInvoiceNote: normalizeInvoiceNote,
     validateValues: validateValues,
     createPayload: createPayload,
     createAckNonce: createAckNonce,

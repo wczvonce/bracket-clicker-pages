@@ -174,13 +174,15 @@ main {
 
 input,
 select,
+textarea,
 button {
   min-height: 48px;
   font: inherit;
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   padding: 12px 13px;
   border: 1px solid #c9c6bd;
@@ -191,10 +193,16 @@ select {
 
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 button:focus-visible,
 [tabindex="-1"]:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+textarea {
+  min-height: 112px;
+  resize: vertical;
 }
 
 .date-grid {
