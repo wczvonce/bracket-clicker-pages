@@ -173,6 +173,7 @@ function validValues() {
     checkIn: "2026-08-02",
     checkOut: "2026-08-05",
     totalGross: "158.00",
+    invoiceNote: "Ubytovanie bez jedla.",
     emailVerified: true
   };
 }
@@ -241,8 +242,11 @@ test("cloud formulár je mobilný, súkromný a používa iba ohraničený Apps 
   assert.ok(script.includes('frame.referrerPolicy = "no-referrer"'));
   assert.ok(script.includes('frame.setAttribute("sandbox", "allow-scripts allow-same-origin")'));
   assert.ok(style.includes("env(safe-area-inset-top)"));
-  assert.ok(html.includes('app.js?v=20260809-2'));
-  assert.ok(html.includes('style.css?v=20260808-2'));
+  assert.ok(html.includes('app.js?v=20260809-3'));
+  assert.ok(html.includes('style.css?v=20260809-3'));
+  assert.ok(html.includes('id="invoiceNote"'));
+  assert.ok(html.includes('name="invoice_note"'));
+  assert.ok(html.includes('maxlength="500"'));
   assert.ok(!html.includes('id="bookingId"'));
   assert.ok(!html.includes('name="booking_id"'));
   assert.ok(!html.includes('id="bookingSummary"'));
@@ -346,10 +350,38 @@ test("owner payload zodpovedá zmluve verejného intake a nesie celý podpísan�
   assert.equal(payload.check_in, "2026-08-02");
   assert.equal(payload.check_out, "2026-08-05");
   assert.equal(payload.total_gross, "158.00");
+  assert.equal(payload.invoice_note, "Ubytovanie bez jedla.");
   assert.equal(Object.prototype.hasOwnProperty.call(payload, "booking_id"), false);
   assert.equal(payload.email_verified, "true");
   assert.equal(Object.prototype.hasOwnProperty.call(payload, "_subject"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(payload, "confirmed_guest_name"), false);
+});
+
+test("mobilný DOM odošle vyplnenú textarea ako invoice_note", () => {
+  const token = tokenFor(validClaims({ props: ["APT7"] }));
+  const { api, elements, document, sandbox } = createSandbox("#token=" + token);
+  api.initialize();
+  elements.totalGross.value = "158,00";
+  elements.invoiceNote.value = "  Ubytovanie bez jedla.\r\nPodľa požiadavky hosťa.  ";
+  elements.emailVerified.checked = true;
+
+  elements.ownerForm.dispatch("submit", { preventDefault() {} });
+  const transportForm = document.body.children.find(child => child.tagName === "FORM");
+  const frame = document.body.children.find(child => child.tagName === "IFRAME");
+  assert.ok(transportForm, "odosielací formulár musí vzniknúť");
+  assert.ok(frame, "bezpečný iframe musí vzniknúť");
+  const fields = Object.fromEntries(transportForm.children.map(input => [input.name, input.value]));
+  assert.equal(fields.invoice_note, "Ubytovanie bez jedla.\nPodľa požiadavky hosťa.");
+
+  sandbox.dispatch("message", {
+    source: frame.contentWindow,
+    origin: "https://script.googleusercontent.com",
+    data: {
+      channel: "booking-invoice-intake-v1",
+      ok: true,
+      ack_nonce: fields.ack_nonce
+    }
+  });
 });
 
 test("cena, dátumy, apartmán a potvrdenie sa validujú pred odoslaním", () => {
@@ -365,8 +397,22 @@ test("cena, dátumy, apartmán a potvrdenie sa validujú pred odoslaním", () =>
   values.checkOut = "2026-08-01";
   assert.match(api.validateValues(values, claims), /odchodu/i);
   values.checkOut = "2026-08-05";
+  values.invoiceNote = "x".repeat(501);
+  assert.match(api.validateValues(values, claims), /500 znakov/i);
+  values.invoiceNote = "=SUM(A1:A2)";
+  assert.match(api.validateValues(values, claims), /nesmie začínať/i);
+  values.invoiceNote = "";
   values.emailVerified = false;
   assert.match(api.validateValues(values, claims), /potvrďte/i);
+});
+
+test("voliteľná poznámka zachová riadky, diakritiku a odstráni riadiace znaky", () => {
+  const { api } = createSandbox();
+  assert.equal(
+    api.normalizeInvoiceNote("  Ubytovanie bez jedla.\r\nĎakujem.\u0000  "),
+    "Ubytovanie bez jedla.\nĎakujem."
+  );
+  assert.equal(api.normalizeInvoiceNote(""), "");
 });
 
 test("iframe POST je classic urlencoded, token ostáva iba v tele a nonce je bezpečný", () => {

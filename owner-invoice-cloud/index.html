@@ -9,8 +9,8 @@
   <meta name="theme-color" content="#173f35">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'; font-src 'none'; base-uri 'none'; form-action https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; object-src 'none'; media-src 'none'; manifest-src 'none'; worker-src 'none'; upgrade-insecure-requests">
   <title>Doplnenie údajov k faktúre</title>
-  <link rel="stylesheet" href="./style.css?v=20260808-2">
-  <script src="./app.js?v=20260809-2" defer></script>
+  <link rel="stylesheet" href="./style.css?v=20260809-3">
+  <script src="./app.js?v=20260809-3" defer></script>
 </head>
 <body>
   <header class="page-header">
@@ -73,6 +73,12 @@
             <span aria-hidden="true">EUR</span>
           </div>
           <p id="grossHint" class="hint">Uveďte celkovú cenu rezervácie, nie sumu po odpočítaní provízie.</p>
+        </div>
+
+        <div class="field">
+          <label for="invoiceNote">Poznámka na faktúre (voliteľné)</label>
+          <textarea id="invoiceNote" name="invoice_note" maxlength="500" rows="4" autocomplete="off" placeholder="Napr. Ubytovanie bez jedla." aria-describedby="invoiceNoteHint"></textarea>
+          <p id="invoiceNoteHint" class="hint">Text sa zobrazí priamo na faktúre. Ak poznámku nepotrebujete, pole nechajte prázdne.</p>
         </div>
 
         <div class="confirmation">
