@@ -157,6 +157,8 @@ function validClaims(overrides) {
     rid: "web-0123456789abcdef0123456789abcdef",
     name: "Ivan Povrazník",
     bid: "123456789",
+    cin: "2026-08-02",
+    cout: "2026-08-05",
     exp: 1900000000,
     props: [
       { code: "KAMZIK26", label: "Apartmán Kamzík 26" },
@@ -239,7 +241,7 @@ test("cloud formulár je mobilný, súkromný a používa iba ohraničený Apps 
   assert.ok(script.includes('frame.referrerPolicy = "no-referrer"'));
   assert.ok(script.includes('frame.setAttribute("sandbox", "allow-scripts allow-same-origin")'));
   assert.ok(style.includes("env(safe-area-inset-top)"));
-  assert.ok(html.includes('app.js?v=20260809-1'));
+  assert.ok(html.includes('app.js?v=20260809-2'));
   assert.ok(html.includes('style.css?v=20260808-2'));
   assert.ok(!html.includes('id="bookingId"'));
   assert.ok(!html.includes('name="booking_id"'));
@@ -255,6 +257,8 @@ test("v2 token sa číta iba z fragmentu a kontroluje základný tvar claims", (
   assert.equal(claims.version, 2);
   assert.equal(claims.requestId, "web-0123456789abcdef0123456789abcdef");
   assert.equal(claims.guestName, "Ivan Povrazník");
+  assert.equal(claims.checkIn, "2026-08-02");
+  assert.equal(claims.checkOut, "2026-08-05");
   assert.equal(claims.properties.length, 2);
   assert.equal(claims.properties[1].code, "KAMZIK64");
   assert.equal(Object.prototype.hasOwnProperty.call(claims, "bookingId"), false);
@@ -263,6 +267,8 @@ test("v2 token sa číta iba z fragmentu a kontroluje základný tvar claims", (
   assert.throws(() => api.decodeClaims(tokenFor(validClaims({ v: 1 })), 1800000000));
   assert.throws(() => api.decodeClaims(tokenFor(validClaims({ exp: 1700000000 })), 1800000000));
   assert.throws(() => api.decodeClaims(tokenFor(validClaims({ props: [] })), 1800000000));
+  assert.throws(() => api.decodeClaims(tokenFor(validClaims({ cout: "" })), 1800000000));
+  assert.throws(() => api.decodeClaims(tokenFor(validClaims({ cout: "2026-08-02" })), 1800000000));
 });
 
 test("mobilné DOM zobrazenie vytvorí výber pri viacerých povolených apartmánoch", () => {
@@ -271,6 +277,8 @@ test("mobilné DOM zobrazenie vytvorí výber pri viacerých povolených apartm�
   api.initialize();
 
   assert.equal(elements.guestName.textContent, "Ivan Povrazník");
+  assert.equal(elements.checkIn.value, "2026-08-02");
+  assert.equal(elements.checkOut.value, "2026-08-05");
   assert.equal(elements.propertyField.classList.contains("hidden"), false);
   assert.equal(elements.propertyCode.children.length, 3);
   assert.equal(elements.propertyCode.children[1].value, "KAMZIK26");
@@ -289,6 +297,12 @@ test("mobilné DOM zobrazenie vytvorí výber pri viacerých povolených apartm�
   const withoutBookingId = createSandbox("#token=" + tokenFor(validClaims({ bid: "" })));
   withoutBookingId.api.initialize();
   assert.equal(withoutBookingId.elements.formPanel.classList.contains("hidden"), false);
+
+  const legacy = createSandbox("#token=" + tokenFor(validClaims({ cin: undefined, cout: undefined })));
+  legacy.api.initialize();
+  assert.equal(legacy.elements.checkIn.value, "");
+  assert.equal(legacy.elements.checkOut.value, "");
+  assert.equal(legacy.elements.formPanel.classList.contains("hidden"), false);
 });
 
 test("jeden povolený apartmán sa zobrazí bez zbytočného výberu", () => {

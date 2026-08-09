@@ -165,7 +165,7 @@
     var guestEmail = document.getElementById("invoiceEmail").value.trim().toLowerCase();
     return {
       action: "guest_request",
-      schema_version: "4",
+      schema_version: "5",
       request_id: "",
       property_code: "APT14",
       source_site: SOURCE_SITE,
@@ -179,6 +179,8 @@
       vat_id: document.getElementById("invoiceVatId").value.trim(),
       guest_email: guestEmail,
       booking_id: document.getElementById("invoiceBookingId").value.replace(/\D/g, ""),
+      check_in: document.getElementById("invoiceCheckIn").value,
+      check_out: document.getElementById("invoiceCheckOut").value,
       note: document.getElementById("invoiceNote").value.trim(),
       email_confirmed: String(document.getElementById("invoiceEmailConfirmedCheck").checked),
       electronic_delivery_consent: String(document.getElementById("invoiceConsent").checked),
@@ -273,6 +275,25 @@
   var activeClearPromise = null;
   var preparing = false;
 
+  function validateStayDatesBeforePrepare() {
+    var checkIn = document.getElementById("invoiceCheckIn");
+    var checkOut = document.getElementById("invoiceCheckOut");
+    checkOut.min = checkIn.value || "";
+    var invalidOrder = Boolean(
+      checkIn.value && checkOut.value && checkOut.value <= checkIn.value
+    );
+    if (typeof checkOut.setCustomValidity === "function") {
+      checkOut.setCustomValidity(
+        invalidOrder ? "Dátum odchodu musí byť po dátume príchodu." : ""
+      );
+    }
+    var valid = Boolean(checkIn.value && checkOut.value && !invalidOrder);
+    if (typeof form.reportValidity === "function") {
+      valid = form.reportValidity() && valid;
+    }
+    return valid;
+  }
+
   globalThis.clearInvoiceRequestId = function () {
     var requestId = activeRequestId;
     var fingerprint = activeFingerprint;
@@ -296,6 +317,7 @@
   async function wrappedSubmit(event) {
     event.preventDefault();
     if (preparing) return false;
+    if (!validateStayDatesBeforePrepare()) return false;
     var guestEmail = document.getElementById("invoiceEmail").value.trim().toLowerCase();
     var confirmedEmail = document.getElementById("invoiceEmailConfirm").value.trim().toLowerCase();
     var confirmationsValid =

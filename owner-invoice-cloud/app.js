@@ -88,6 +88,8 @@
 
     var requestId = String(parsed.rid || "").trim();
     var guestName = cleanText(parsed.name, 200);
+    var checkIn = cleanText(parsed.cin, 20);
+    var checkOut = cleanText(parsed.cout, 20);
     var expiration = Number(parsed.exp);
     var currentTime = Number.isFinite(nowSeconds) ? nowSeconds : Date.now() / 1000;
     if (
@@ -99,10 +101,19 @@
       throw new Error(expiration <= currentTime ? "expired" : "claims");
     }
 
+    if (
+      Boolean(checkIn) !== Boolean(checkOut) ||
+      (checkIn && (!isIsoDate(checkIn) || !isIsoDate(checkOut) || checkOut <= checkIn))
+    ) {
+      throw new Error("claims");
+    }
+
     return Object.freeze({
       version: 2,
       requestId: requestId,
       guestName: guestName,
+      checkIn: checkIn,
+      checkOut: checkOut,
       expiration: expiration,
       properties: normalizeProperties(parsed)
     });
@@ -395,6 +406,8 @@
     }
 
     document.getElementById("guestName").textContent = claims.guestName;
+    checkInInput.value = claims.checkIn || "";
+    checkOutInput.value = claims.checkOut || "";
 
     if (claims.properties.length === 1) {
       // Skryty required <select> by inak zablokoval nativne odoslanie formulara
