@@ -30,10 +30,11 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;font-size:15px}
-.login{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
-.login .box{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:14px}
-.login h1{font-size:1.6rem}
+body{margin:0;font-size:15px;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.modal{position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--fg) 45%,transparent);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.modal .box{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal .actions{display:flex;gap:8px;flex-wrap:wrap}
+.foot{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
 .wrap{max-width:1080px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
 h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
@@ -142,15 +143,14 @@ tr.day-start td{border-top:2px solid var(--line)}
 </style>
 </head>
 <body>
-<div class="login" id="login">
-  <form class="box" id="loginForm" novalidate>
-    <h1>Masáže a zisk</h1>
-    <p class="hint">Súkromná evidencia. Zadajte heslo.</p>
-    <label class="f" id="urlWrap">Adresa Google skriptu (končí /exec)<input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
-    <label class="f">Heslo<input type="password" id="heslo" autocomplete="current-password"></label>
-    <label class="chk"><input type="checkbox" id="zapamatat" checked> Zapamätať na tomto zariadení</label>
-    <div class="err" id="loginErr" hidden></div>
-    <button class="btn" type="submit" id="loginBtn">Prihlásiť</button>
+<div class="modal" id="pinModal" hidden>
+  <form class="box" id="pinForm" novalidate>
+    <h2>PIN na úpravy</h2>
+    <p class="hint">Prezerať môže každý s odkazom. Pridávať, upravovať a mazať môže len ten, kto pozná PIN. Na tomto zariadení ho zadáte len raz.</p>
+    <label class="f">PIN<input type="password" id="pinInput" autocomplete="current-password" autocapitalize="off" spellcheck="false"></label>
+    <label class="chk"><input type="checkbox" id="pinRemember" checked> Zapamätať na tomto zariadení</label>
+    <div class="err" id="pinErr" hidden></div>
+    <div class="actions"><button class="btn" type="submit" id="pinOk">Pokračovať</button><button class="btn ghost" type="button" id="pinCancel">Zrušiť</button></div>
   </form>
 </div>
 
@@ -160,7 +160,7 @@ tr.day-start td{border-top:2px solid var(--line)}
       <h1>Masáže a zisk</h1>
       <p>Tržby z masáží, náklady a čistý zisk na jednom mieste.</p>
     </div>
-    <div class="left" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="status" id="status">Načítavam dáta…</div><button class="btn ghost small" id="refresh" type="button">Obnoviť</button><button class="btn ghost small" id="logout" type="button">Odhlásiť</button></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="status" id="status">Načítavam dáta…</div><button class="btn ghost small" id="refresh" type="button">Obnoviť</button></div>
   </header>
 
   <div class="chips" id="periods" role="group" aria-label="Obdobie"></div>
@@ -301,6 +301,7 @@ tr.day-start td{border-top:2px solid var(--line)}
     </div>
   </section>
 
+  <footer class="foot"><span id="pinState">Úpravy sú chránené PIN-om.</span><button class="link" type="button" id="pinForget" hidden>Zabudnúť PIN na tomto zariadení</button></footer>
   <datalist id="dlMaserky"></datalist>
   <datalist id="dlTypy"><option value="Thai oil"><option value="Masáž nôh"><option value="Masáž tváre"></datalist>
   <datalist id="dlKat"><option value="Nájom"><option value="Energie"><option value="Oleje a kozmetika"><option value="Uteráky a prádlo"><option value="Výplaty masérok"><option value="Reklama"><option value="Upratovanie"><option value="Ostatné"></datalist>
@@ -581,7 +582,7 @@ function saveSettingsSoon(){clearTimeout(setTimer);setTimer=setTimeout(async()=>
 function failWrite(x,errId){
   const code=x&&x.code;
   if(code==='invalid_argument'&&S.canWrite===null){S.canWrite=false;applyWrite()}
-  if(code==='auth')return;
+  if(code==='cancel'){setStatus('Neuložené – bez PIN-u sa nedá zapisovať.');if(errId){$(errId).textContent='Na uloženie treba zadať PIN.';$(errId).hidden=false}return}
   const msg=code==='invalid_argument'?'Na úpravy nemáte oprávnenie — táto stránka je pre vás len na čítanie.':code==='quota_exceeded'?'Úložisko je plné. Zmažte staré záznamy a skúste znova.':'Nepodarilo sa uložiť. Skúste to o chvíľu znova.';
   setStatus(msg,true);if(errId){$(errId).textContent=msg;$(errId).hidden=false}
 }
@@ -621,51 +622,58 @@ $('sKupony').addEventListener('change',e=>{S.nast={...S.nast,kupony:e.target.che
 try{const p=localStorage.getItem('obdobie');if(p)S.period=p;const t=localStorage.getItem('tab');if(t&&$('p-'+t)){document.querySelector(`[data-tab="${t}"]`).click()}}catch(_){}
 render();
 
-/* ---------- data (Google Apps Script) ---------- */
-const DEFAULT_API='';   // adresa webovej aplikácie Google Apps Script (…/exec)
-const K_URL='masaze-api-url',K_PASS='masaze-heslo';
+/* ---------- data (Supabase) ---------- */
+const SB_URL='https://ubmdvbxjkyacdsceokxm.supabase.co',SB_KEY='sb_publishable_SZ1VgksgHz9iV7JT-UradA_pVpdi8qw';
+const K_PIN='masaze-evidencia-pin';
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}},del:k=>{try{localStorage.removeItem(k)}catch(_){}}};
-S.api=DEFAULT_API||ls.get(K_URL)||'';S.heslo=ls.get(K_PASS)||'';
+S.pin=ls.get(K_PIN)||'';
 const newId=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return Array.from(a,b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('')};
-function validUrl(u){try{const x=new URL(u);return x.protocol==='https:'&&x.hostname==='script.google.com'&&/^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(x.pathname)}catch(_){return false}}
-async function api(body){
+async function sb(path,opts={}){
   let r;
-  try{r=await fetch(S.api,{method:'POST',body:JSON.stringify({...body,heslo:S.heslo}),redirect:'follow',credentials:'omit'})}
+  try{r=await fetch(SB_URL+path,{...opts,headers:{apikey:SB_KEY,'Content-Type':'application/json',...(opts.headers||{})}})}
   catch(_){throw {code:'unavailable'}}
-  let j;try{j=await r.json()}catch(_){throw {code:'unavailable'}}
-  if(!j.ok){if(j.chyba==='zle_heslo'){showLogin('Nesprávne heslo.');throw {code:'auth'}}
-    if(j.chyba==='heslo_nenastavene'){showLogin('V Google skripte ešte nie je nastavené heslo (riadok HESLO).');throw {code:'auth'}}
-    throw {code:'server',message:j.chyba}}
-  if(j.data)applyData(j.data);
+  const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch(_){}
+  if(!r.ok){const m=(j&&(j.message||j.hint))||'';throw {code:m.includes('zly_pin')?'pin':'unavailable',message:m}}
   return j;
 }
-function dbRef(kol,id){return {
-  set:d=>api({akcia:'ulozit',kolekcia:kol,id:id||newId(),data:d}),
-  delete:()=>api({akcia:'zmazat',kolekcia:kol,id})
-}}
-function applyData(d){
-  S.masaze=d.masaze||[];S.naklady=d.naklady||[];S.poukazy=d.poukazy||[];S.vklady=d.vklady||[];
-  const n=d.nastavenia||{};S.nast={vyplaty:n.vyplaty||{},kupony:!!n.kupony};
+async function nacitat(){
+  const rows=[];let from=0;
+  for(;;){const part=await sb('/rest/v1/evidencia_zaznamy?select=kolekcia,id,data&order=kolekcia.asc,id.asc',{headers:{Range:from+'-'+(from+999)}});
+    rows.push(...part);if(part.length<1000)break;from+=1000}
+  const by={masaze:[],naklady:[],poukazy:[],vklady:[]};let nast=null;
+  rows.forEach(r=>{if(r.kolekcia==='nastavenia'){if(r.id==='hlavne')nast=r.data}else if(by[r.kolekcia])by[r.kolekcia].push({id:r.id,...r.data})});
+  S.masaze=by.masaze;S.naklady=by.naklady;S.poukazy=by.poukazy;S.vklady=by.vklady;
+  if(nast&&!$('setCards').contains(document.activeElement))S.nast={vyplaty:nast.vyplaty||{},kupony:!!nast.kupony};
   S.loaded.m=S.loaded.n=S.loaded.p=true;S.lastLoad=Date.now();
-  setStatus('Uložené v Google tabuľke · '+S.masaze.length+' masáží');render();
+  setStatus('Uložené online · '+S.masaze.length+' masáží');render();
 }
-function showLogin(msg){$('login').hidden=false;$('urlWrap').hidden=!!DEFAULT_API;$('apiUrl').value=S.api;
-  $('loginErr').textContent=msg||'';$('loginErr').hidden=!msg;$('loginBtn').disabled=false;$('loginBtn').textContent='Prihlásiť';
-  setTimeout(()=>(S.api?$('heslo'):$('apiUrl')).focus(),50)}
-async function nacitat(){setStatus('Načítavam…');await api({akcia:'nacitat'});$('login').hidden=true}
-$('loginForm').addEventListener('submit',async e=>{e.preventDefault();
-  const u=DEFAULT_API||$('apiUrl').value.trim(),h=$('heslo').value;
-  if(!validUrl(u)){$('loginErr').textContent='Adresa musí byť v tvare https://script.google.com/macros/s/…/exec';$('loginErr').hidden=false;return}
-  if(!h){$('loginErr').textContent='Zadajte heslo.';$('loginErr').hidden=false;return}
-  S.api=u;S.heslo=h;$('loginBtn').disabled=true;$('loginBtn').textContent='Overujem…';
-  try{await nacitat();ls.set(K_URL,u);if($('zapamatat').checked)ls.set(K_PASS,h);else ls.del(K_PASS);$('heslo').value=''}
-  catch(x){if(x.code!=='auth')showLogin('Nepodarilo sa spojiť so skriptom. Skontrolujte adresu a či je skript nasadený pre „Ktokoľvek“.')}
-});
-$('refresh').onclick=()=>nacitat().catch(x=>{if(x.code!=='auth')setStatus('Nepodarilo sa načítať. Skúste znova.',true)});
-$('logout').onclick=()=>{ls.del(K_PASS);S.heslo='';S.masaze=[];S.naklady=[];S.poukazy=[];S.vklady=[];render();showLogin('')};
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.heslo&&$('login').hidden&&Date.now()-(S.lastLoad||0)>60000)nacitat().catch(()=>{})});
-S.canWrite=true;
-if(S.api&&S.heslo){nacitat().catch(x=>{if(x.code!=='auth')showLogin('Nepodarilo sa spojiť so skriptom. Skúste to znova.')})}else showLogin('');
+let pinWait=null;
+function askPin(msg){
+  return new Promise((res,rej)=>{pinWait={res,rej};$('pinErr').textContent=msg||'';$('pinErr').hidden=!msg;$('pinInput').value='';
+    $('pinOk').disabled=false;$('pinOk').textContent='Pokračovať';$('pinModal').hidden=false;setTimeout(()=>$('pinInput').focus(),30)});
+}
+$('pinForm').addEventListener('submit',async e=>{e.preventDefault();const p=$('pinInput').value.trim();if(!p)return;
+  $('pinOk').disabled=true;$('pinOk').textContent='Overujem…';
+  let ok=false;try{ok=await sb('/rest/v1/rpc/evidencia_over_pin',{method:'POST',body:JSON.stringify({p_pin:p})})}catch(_){}
+  if(ok!==true){$('pinOk').disabled=false;$('pinOk').textContent='Pokračovať';$('pinErr').textContent='Nesprávny PIN alebo chyba spojenia.';$('pinErr').hidden=false;return}
+  S.pin=p;if($('pinRemember').checked)ls.set(K_PIN,p);$('pinModal').hidden=true;updatePinState();const w=pinWait;pinWait=null;w&&w.res(p)});
+$('pinCancel').onclick=()=>{$('pinModal').hidden=true;const w=pinWait;pinWait=null;w&&w.rej({code:'cancel'})};
+async function withPin(fn){
+  if(!S.pin)await askPin('');
+  try{return await fn(S.pin)}
+  catch(x){if(x.code!=='pin')throw x;S.pin='';ls.del(K_PIN);updatePinState();await askPin('PIN sa zmenil alebo je nesprávny. Zadajte ho znova.');return await fn(S.pin)}
+}
+function dbRef(kol,id){return {
+  set:async d=>{const rid=id||newId();await withPin(pin=>sb('/rest/v1/rpc/evidencia_ulozit',{method:'POST',body:JSON.stringify({p_pin:pin,p_kolekcia:kol,p_id:rid,p_data:d})}));await nacitat()},
+  delete:async()=>{await withPin(pin=>sb('/rest/v1/rpc/evidencia_zmazat',{method:'POST',body:JSON.stringify({p_pin:pin,p_kolekcia:kol,p_id:id})}));await nacitat()}
+}}
+function updatePinState(){$('pinState').textContent=S.pin?'Na tomto zariadení môžete upravovať.':'Prezerať môže každý s odkazom. Úpravy sú chránené PIN-om.';$('pinForget').hidden=!S.pin}
+$('pinForget').onclick=()=>{S.pin='';ls.del(K_PIN);updatePinState()};
+$('refresh').onclick=()=>nacitat().catch(()=>setStatus('Nepodarilo sa načítať. Skontrolujte pripojenie.',true));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-(S.lastLoad||0)>30000)nacitat().catch(()=>{})});
+setInterval(()=>{if(!document.hidden&&$('formM').hidden&&$('formN').hidden&&$('formP').hidden&&$('formV').hidden)nacitat().catch(()=>{})},60000);
+S.canWrite=true;updatePinState();
+nacitat().catch(()=>{S.loaded.m=S.loaded.n=S.loaded.p=true;render();setStatus('Nepodarilo sa načítať údaje. Skontrolujte pripojenie a kliknite Obnoviť.',true)});
 })();
 </script>
 </body>
