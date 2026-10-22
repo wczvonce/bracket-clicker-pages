@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#2f6f57">
+<title>Masáže a zisk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one working column — period bar, profit equation, then tabs (masáže / náklady / prehľad / nastavenia) */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --surface-2:#e9eee8; --line:#d5ddd3;
+  --fg:#1d2621; --muted:#5d6b62; --accent:#2f6f57; --accent-ink:#ffffff; --accent-soft:#dcebe3;
+  --plum:#7a4a6b; --pos:#23744f; --neg:#b2443a; --warn:#9a6a10; --warn-soft:#f6ecd4;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141a17; --surface:#1c2420; --surface-2:#232d28; --line:#33403a;
+  --fg:#e6ece7; --muted:#9aa8a0; --accent:#6fbf9b; --accent-ink:#0f1a15; --accent-soft:#24392f;
+  --plum:#c99bbb; --pos:#6fcf9f; --neg:#ef8a7f; --warn:#e2b35a; --warn-soft:#3a3020; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#141a17; --surface:#1c2420; --surface-2:#232d28; --line:#33403a;
+  --fg:#e6ece7; --muted:#9aa8a0; --accent:#6fbf9b; --accent-ink:#0f1a15; --accent-soft:#24392f;
+  --plum:#c99bbb; --pos:#6fcf9f; --neg:#ef8a7f; --warn:#e2b35a; --warn-soft:#3a3020; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-size:15px}
+.login{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.login .box{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.login h1{font-size:1.6rem}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1080px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.9rem;font-weight:700}
+h2{font-size:1.2rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.muted{color:var(--muted)}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.top p{margin:4px 0 0;color:var(--muted)}
+.status{font-size:.82rem;color:var(--muted)}
+.status.err{color:var(--neg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 14px;font:inherit;font-size:.9rem;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* profit equation */
+.eq{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;align-items:stretch}
+.eq .term{display:flex;flex-direction:column;gap:2px;min-width:0}
+.eq .lab{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.eq .val{font-family:var(--f-display);font-size:1.45rem;font-weight:700}
+.eq .sub{font-size:.82rem;color:var(--muted);white-space:normal}
+.eq .op{color:var(--muted);font-weight:700;margin-right:4px}
+.eq .profit{background:var(--accent-soft);border-radius:8px;padding:10px 12px;margin:-10px -6px}
+.eq .profit .val{font-size:1.9rem}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.money{border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px;border:2px solid var(--mc);background:color-mix(in srgb,var(--mc) 9%,var(--surface))}
+.money.cash{--mc:var(--accent)} .money.bank{--mc:var(--plum)}
+.money .head{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--mc);text-transform:uppercase;letter-spacing:.06em;font-size:.8rem}
+.money .ico{width:26px;height:26px;border-radius:7px;background:var(--mc);color:var(--surface);display:grid;place-items:center;font-size:.85rem;font-weight:700;letter-spacing:0}
+.money .big{font-family:var(--f-display);font-size:2rem;font-weight:700;color:var(--fg)}
+.money .det{font-size:.85rem;color:var(--muted);white-space:normal}
+.money .share{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.money .share i{display:block;height:100%;background:var(--mc)}
+th.c-cash,td.c-cash{background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent);font-weight:600}
+th.c-bank,td.c-bank{background:color-mix(in srgb,var(--plum) 10%,transparent);color:var(--plum);font-weight:600}
+.cashbox{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:12px 18px;border:1px dashed var(--line);border-radius:var(--r);font-size:.92rem;color:var(--muted)}
+.cashbox .lab{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;width:100%}
+.cashbox .bal{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.vrow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.92rem}
+.vrow .acts{display:flex;align-items:center;gap:4px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.panel{display:flex;flex-direction:column;gap:14px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.bar .left{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+button.btn{font:inherit;font-weight:600;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink)}
+button.ghost{background:var(--surface);color:var(--fg);border-color:var(--line)}
+button.small{padding:4px 10px;font-size:.85rem;font-weight:500}
+button.danger{background:var(--neg);border-color:var(--neg);color:#fff}
+button.link{background:none;border:0;color:var(--accent);font:inherit;font-size:.85rem;cursor:pointer;padding:4px 6px}
+button.link.del{color:var(--neg)}
+input,select{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.8rem;font-weight:600;color:var(--muted);min-width:0}
+label.f input,label.f select{font-size:.95rem;font-weight:400}
+label.chk{display:flex;gap:8px;align-items:center;font-size:.9rem}
+
+.form{background:var(--surface);border:1px solid var(--accent);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.form .actions{display:flex;gap:8px;flex-wrap:wrap}
+.form .err{color:var(--neg);font-size:.88rem}
+
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+td.r,th.r{text-align:right}
+tr:last-child td{border-bottom:0}
+tfoot td{font-weight:700;background:var(--surface-2)}
+tr.day-start td{border-top:2px solid var(--line)}
+.pill{display:inline-block;border-radius:999px;padding:1px 9px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.pill.kup{background:color-mix(in srgb,var(--plum) 16%,transparent);color:var(--plum)}
+.pill.pk{background:var(--accent-soft);color:var(--accent)}
+.pill.ok{background:var(--accent-soft);color:var(--pos)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.who{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.note{font-size:.82rem;color:var(--muted);max-width:220px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.confirm{display:inline-flex;gap:6px;align-items:center;font-size:.85rem}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:.92rem}
+.kv span:first-child{color:var(--muted)}
+.kv.total{border-top:1px solid var(--line);padding-top:8px;font-weight:700}
+
+.chart{display:flex;align-items:flex-end;gap:4px;height:180px;padding-top:18px;overflow-x:auto}
+.chart .col{flex:1 0 22px;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;min-width:22px}
+.chart .stack{width:100%;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden}
+.chart .seg{width:100%}
+.chart .d{font-size:.7rem;color:var(--muted)}
+.chart .v{font-size:.66rem;color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.hint{font-size:.85rem;color:var(--muted);margin:0}
+.callout{background:var(--warn-soft);color:var(--fg);border-radius:8px;padding:10px 14px;font-size:.88rem}
+@media (max-width:560px){h1{font-size:1.5rem}.eq .val{font-size:1.25rem}.eq .profit .val{font-size:1.6rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="login" id="login">
+  <form class="box" id="loginForm" novalidate>
+    <h1>Masáže a zisk</h1>
+    <p class="hint">Súkromná evidencia. Zadajte heslo.</p>
+    <label class="f" id="urlWrap">Adresa Google skriptu (končí /exec)<input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="f">Heslo<input type="password" id="heslo" autocomplete="current-password"></label>
+    <label class="chk"><input type="checkbox" id="zapamatat" checked> Zapamätať na tomto zariadení</label>
+    <div class="err" id="loginErr" hidden></div>
+    <button class="btn" type="submit" id="loginBtn">Prihlásiť</button>
+  </form>
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Masáže a zisk</h1>
+      <p>Tržby z masáží, náklady a čistý zisk na jednom mieste.</p>
+    </div>
+    <div class="left" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="status" id="status">Načítavam dáta…</div><button class="btn ghost small" id="refresh" type="button">Obnoviť</button><button class="btn ghost small" id="logout" type="button">Odhlásiť</button></div>
+  </header>
+
+  <div class="chips" id="periods" role="group" aria-label="Obdobie"></div>
+
+  <section class="eq" id="eq" aria-label="Výpočet zisku"></section>
+  <section class="split" id="split" aria-label="Hotovosť a banka"></section>
+  <section class="cashbox" id="cashbox" aria-label="Peniaze prevádzky"></section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="masaze" aria-selected="true">Masáže</button>
+    <button class="tab" role="tab" data-tab="naklady" aria-selected="false">Náklady a vklady</button>
+    <button class="tab" role="tab" data-tab="poukazy" aria-selected="false">Darčekové poukazy</button>
+    <button class="tab" role="tab" data-tab="prehlad" aria-selected="false">Prehľad</button>
+    <button class="tab" role="tab" data-tab="nastavenia" aria-selected="false">Výplaty masérok</button>
+  </nav>
+
+  <!-- MASÁŽE -->
+  <section class="panel" id="p-masaze">
+    <div class="bar">
+      <div class="left">
+        <select id="fMaserka" aria-label="Filtrovať masérku"><option value="">Všetky masérky</option></select>
+        <select id="fPlatba" aria-label="Filtrovať platbu">
+          <option value="">Všetky platby</option><option value="cash">Hotovosť</option><option value="banka">Banka / karta</option><option value="kupon">Kupón</option><option value="poukaz">Darčekový poukaz</option><option value="zadarmo">Zadarmo (propagácia)</option><option value="nic">Bez platby</option>
+        </select>
+      </div>
+      <button class="btn" id="addM" data-write>+ Pridať masáž</button>
+    </div>
+    <form class="form" id="formM" hidden novalidate>
+      <h3 id="formMTitle">Nová masáž</h3>
+      <div class="grid">
+        <label class="f">Dátum<input type="date" id="mDatum" required></label>
+        <label class="f">Čas (nepovinné)<input type="text" id="mCas" placeholder="napr. 17:30 – 19:00"></label>
+        <label class="f">Masérka<input type="text" id="mMaserka" list="dlMaserky" required></label>
+        <label class="f">Masáž<input type="text" id="mTyp" list="dlTypy" value="Thai oil"></label>
+        <label class="f">Dĺžka (min)<input type="text" inputmode="numeric" id="mMin" placeholder="60"></label>
+      </div>
+      <div class="grid">
+        <label class="f">Hotovosť (€)<input type="text" inputmode="decimal" id="mCash" placeholder="0"></label>
+        <label class="f">Banka / karta (€)<input type="text" inputmode="decimal" id="mBanka" placeholder="0"></label>
+        <label class="f">Kupón od<input type="text" id="mKuponOd" placeholder="napr. Dušana"></label>
+        <label class="f">Hodnota kupónu (€)<input type="text" inputmode="decimal" id="mKuponH" placeholder="0"></label>
+        <label class="f">Darčekový poukaz<select id="mPoukaz"><option value="">— nie —</option></select></label>
+      </div>
+      <label class="f">Poznámka<input type="text" id="mPozn"></label>
+      <label class="chk"><input type="checkbox" id="mZadarmo"> Masáž zadarmo (propagácia, na prilákanie zákazníkov)</label>
+      <div class="err" id="mErr" hidden></div>
+      <div class="actions"><button class="btn" type="submit">Uložiť</button><button class="btn ghost" type="button" id="cancelM">Zrušiť</button></div>
+    </form>
+    <div class="callout" id="mWarn" hidden></div>
+    <div class="tbl-wrap"><table id="tblM"></table></div>
+  </section>
+
+  <!-- NÁKLADY -->
+  <section class="panel" id="p-naklady" hidden>
+    <div class="bar">
+      <p class="hint">Zapíšte sem všetko, čo ste za prevádzku zaplatili: nájom, energie, oleje, prádlo, reklamu… Zisk sa prepočíta hneď.</p>
+      <button class="btn" id="addN" data-write>+ Pridať náklad</button>
+    </div>
+    <form class="form" id="formN" hidden novalidate>
+      <h3 id="formNTitle">Nový náklad</h3>
+      <div class="grid">
+        <label class="f">Dátum<input type="date" id="nDatum" required></label>
+        <label class="f">Kategória<input type="text" id="nKat" list="dlKat" placeholder="napr. Nájom"></label>
+        <label class="f">Suma (€)<input type="text" inputmode="decimal" id="nSuma" placeholder="0" required></label>
+        <label class="f">Zaplatené z<select id="nZdroj"><option>Hotovosť</option><option>Účet</option></select></label>
+      </div>
+      <label class="f">Popis<input type="text" id="nPopis" placeholder="napr. Nájom priestorov – október"></label>
+      <div class="err" id="nErr" hidden></div>
+      <div class="actions"><button class="btn" type="submit">Uložiť</button><button class="btn ghost" type="button" id="cancelN">Zrušiť</button></div>
+    </form>
+    <div class="cards" id="katCards"></div>
+    <div class="card">
+      <div class="bar"><h3>Vklady od majiteľa</h3><button class="btn ghost small" id="addV" data-write>+ Pridať vklad</button></div>
+      <p class="hint">Peniaze, ktoré majiteľ dal na chod prevádzky. Nie sú to tržby, preto zisk nezvyšujú. Pripočítajú sa len k peniazom prevádzky, z ktorých sa platia náklady.</p>
+      <form class="form" id="formV" hidden novalidate>
+        <div class="grid">
+          <label class="f">Dátum<input type="date" id="vDatum" required></label>
+          <label class="f">Suma (€)<input type="text" inputmode="decimal" id="vSuma" required></label>
+          <label class="f">Prijaté do<select id="vZdroj"><option>Hotovosť</option><option>Účet</option></select></label>
+          <label class="f">Popis<input type="text" id="vPopis" placeholder="napr. Na chod prevádzky"></label>
+        </div>
+        <div class="err" id="vErr" hidden></div>
+        <div class="actions"><button class="btn" type="submit">Uložiť</button><button class="btn ghost" type="button" id="cancelV">Zrušiť</button></div>
+      </form>
+      <div id="listV"></div>
+    </div>
+    <div class="tbl-wrap"><table id="tblN"></table></div>
+  </section>
+
+  <!-- POUKAZY -->
+  <section class="panel" id="p-poukazy" hidden>
+    <div class="bar">
+      <p class="hint">Predaný poukaz sa započíta do tržby v deň predaja. Keď ho zákazník potom uplatní, pri masáži vyberte „Darčekový poukaz“ — masáž sa už druhýkrát nezaráta a poukaz sa označí ako použitý.</p>
+      <button class="btn" id="addP" data-write>+ Predať poukaz</button>
+    </div>
+    <form class="form" id="formP" hidden novalidate>
+      <h3 id="formPTitle">Nový darčekový poukaz</h3>
+      <div class="grid">
+        <label class="f">Číslo poukazu<input type="text" id="pCislo"></label>
+        <label class="f">Dátum predaja<input type="date" id="pDatum" required></label>
+        <label class="f">Suma (€)<input type="text" inputmode="decimal" id="pSuma" placeholder="napr. 60" required></label>
+        <label class="f">Zaplatené<select id="pPlatba"><option>Hotovosť</option><option>Banka / karta</option><option>Neuvedené</option></select></label>
+      </div>
+      <div class="grid">
+        <label class="f">Kto kúpil<input type="text" id="pKupujuci"></label>
+        <label class="f">Pre koho<input type="text" id="pPreKoho"></label>
+        <label class="f">Masáž (nepovinné)<input type="text" id="pMasaz" list="dlTypy" placeholder="napr. Thai oil 90 min"></label>
+        <label class="f">Platný do<input type="date" id="pPlatnost"></label>
+      </div>
+      <label class="f">Poznámka<input type="text" id="pPozn"></label>
+      <div class="err" id="pErr" hidden></div>
+      <div class="actions"><button class="btn" type="submit">Uložiť</button><button class="btn ghost" type="button" id="cancelP">Zrušiť</button></div>
+    </form>
+    <div class="cards" id="pkCards"></div>
+    <div class="tbl-wrap"><table id="tblP"></table></div>
+  </section>
+
+  <!-- PREHĽAD -->
+  <section class="panel" id="p-prehlad" hidden>
+    <div class="card">
+      <div class="bar"><h2>Tržby po dňoch</h2><div class="legend"><span><i class="dot" style="background:var(--accent)"></i>Hotovosť</span><span><i class="dot" style="background:var(--plum)"></i>Banka</span><span><i class="dot" style="background:var(--warn)"></i>Kupóny</span></div></div>
+      <div class="chart" id="chart"></div>
+    </div>
+    <h2>Podľa masérok</h2>
+    <div class="cards" id="masCards"></div>
+    <h2>Podľa dĺžky masáže</h2>
+    <div class="tbl-wrap"><table id="tblDlzka"></table></div>
+  </section>
+
+  <!-- NASTAVENIA -->
+  <section class="panel" id="p-nastavenia" hidden>
+    <p class="hint">Ak masérkam platíte podiel z tržby alebo sumu za odpracovanú hodinu, nastavte to tu. Výplaty sa potom automaticky odpočítajú od zisku. Ak im platíte inak, nechajte 0 a zapíšte výplatu ako náklad.</p>
+    <div class="cards" id="setCards"></div>
+    <div class="card">
+      <h3>Kupóny</h3>
+      <label class="chk"><input type="checkbox" id="sKupony"> Započítať hodnotu kupónov do tržby</label>
+      <p class="hint">Kupóny boli väčšinou zaplatené vopred (napr. pri predaji darčekového poukazu). Ak ste ich peniaze už raz započítali inde, nechajte vypnuté, aby sa tržba nezdvojila.</p>
+    </div>
+  </section>
+
+  <datalist id="dlMaserky"></datalist>
+  <datalist id="dlTypy"><option value="Thai oil"><option value="Masáž nôh"><option value="Masáž tváre"></datalist>
+  <datalist id="dlKat"><option value="Nájom"><option value="Energie"><option value="Oleje a kozmetika"><option value="Uteráky a prádlo"><option value="Výplaty masérok"><option value="Reklama"><option value="Upratovanie"><option value="Ostatné"></datalist>
+</div>
+
+<script>
+(function(){
+const S={masaze:[],naklady:[],poukazy:[],vklady:[],editP:null,editV:null,nast:{vyplaty:{},kupony:false},period:'all',tab:'masaze',editM:null,editN:null,confirm:null,canWrite:true,db:null,loaded:{m:false,n:false,p:false}};
+const $=id=>document.getElementById(id);
+const fmtE=n=>(Math.round(n*100)/100).toLocaleString('sk-SK',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const fmtD=s=>{if(!s)return'';const[y,m,d]=s.split('-');return (+d)+'.'+(+m)+'.'+y};
+const MES=['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
+const parseNum=v=>{if(v==null)return 0;v=String(v).trim().replace(/\s/g,'').replace(',','.');if(v==='')return 0;const n=Number(v);return isFinite(n)?n:NaN};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const COLORS=['var(--accent)','var(--plum)','var(--warn)','var(--pos)','var(--neg)'];
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+
+function setStatus(t,err){const el=$('status');el.textContent=t;el.classList.toggle('err',!!err)}
+function inPeriod(d){return S.period==='all'||(d||'').slice(0,7)===S.period}
+function maserky(){return [...new Set(S.masaze.map(m=>m.maserka).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'sk'))}
+function colorOf(name){const i=maserky().indexOf(name);return COLORS[(i<0?0:i)%COLORS.length]}
+function kupVal(m){return S.nast.kupony?(+m.kuponHodnota||0):0}
+function trzba(m){return (+m.cash||0)+(+m.banka||0)+kupVal(m)}
+function vyplata(name,list){const v=S.nast.vyplaty[name]||{};const mm=list.filter(m=>m.maserka===name);
+  const tr=mm.reduce((a,m)=>a+trzba(m),0),hod=mm.reduce((a,m)=>a+(+m.minuty||0),0)/60;
+  return tr*(+v.percento||0)/100+hod*(+v.zaHodinu||0)}
+
+function calc(){
+  const M=S.masaze.filter(m=>inPeriod(m.datum)),N=S.naklady.filter(n=>inPeriod(n.datum));
+  const cash=M.reduce((a,m)=>a+(+m.cash||0),0),banka=M.reduce((a,m)=>a+(+m.banka||0),0),kup=M.reduce((a,m)=>a+kupVal(m),0);
+  const kupCount=M.filter(m=>m.kupon).length,zad=M.filter(m=>m.zadarmo).length;
+  const vypl=maserky().reduce((a,n)=>a+vyplata(n,M),0);
+  const nakl=N.reduce((a,n)=>a+(+n.suma||0),0);
+  const P=S.poukazy.filter(p=>inPeriod(p.datum)),pouk=P.reduce((a,p)=>a+(+p.suma||0),0);
+  const tr=cash+banka+kup+pouk;
+  return {zad,M,N,P,pouk,cash,banka,kup,kupCount,vypl,nakl,tr,zisk:tr-vypl-nakl,min:M.reduce((a,m)=>a+(+m.minuty||0),0)}
+}
+
+function renderPeriods(){
+  const months=[...new Set([...S.masaze,...S.naklady,...S.poukazy].map(x=>(x.datum||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  if(S.period!=='all'&&!months.includes(S.period))S.period='all';
+  const opts=[['all','Celé obdobie'],...months.map(k=>{const[y,m]=k.split('-');return[k,MES[+m-1]+' '+y]})];
+  $('periods').innerHTML=opts.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${S.period===k}">${esc(l)}</button>`).join('');
+}
+
+function renderEq(c){
+  const zcls=c.zisk>=0?'pos':'neg';
+  $('eq').innerHTML=`
+   <div class="term"><span class="lab">Tržby</span><span class="val num">${fmtE(c.tr)}</span>
+     <span class="sub num">hotovosť ${fmtE(c.cash)} · banka ${fmtE(c.banka)}${c.pouk?' · poukazy '+fmtE(c.pouk):''}${S.nast.kupony?' · kupóny '+fmtE(c.kup):''}</span></div>
+   <div class="term"><span class="lab">Výplaty masérok</span><span class="val num"><span class="op">−</span>${fmtE(c.vypl)}</span>
+     <span class="sub">${c.vypl?'podľa nastavenia výplat':'zatiaľ nenastavené'}</span></div>
+   <div class="term"><span class="lab">Ostatné náklady</span><span class="val num"><span class="op">−</span>${fmtE(c.nakl)}</span>
+     <span class="sub">${c.N.length} ${c.N.length===1?'položka':c.N.length>=2&&c.N.length<=4?'položky':'položiek'}</span></div>
+   <div class="term profit"><span class="lab">Čistý zisk</span><span class="val num ${zcls}">${fmtE(c.zisk)}</span>
+     <span class="sub num">${c.M.length} masáží · ${(c.min/60).toLocaleString('sk-SK',{maximumFractionDigits:1})} h · ${c.kupCount} kupónov${c.zad?' · '+c.zad+' zadarmo':''}</span></div>`;
+}
+
+function renderSplit(c){
+  const pc=c.P.filter(p=>p.platba==='Hotovosť'),pb=c.P.filter(p=>p.platba==='Banka / karta'),pn=c.P.filter(p=>p.platba!=='Hotovosť'&&p.platba!=='Banka / karta');
+  const sum=L=>L.reduce((a,p)=>a+(+p.suma||0),0);
+  const cnt=k=>c.M.filter(m=>+m[k]>0).length;
+  const tc=c.cash+sum(pc),tb=c.banka+sum(pb),tot=tc+tb||1;
+  const tile=(cls,ico,lab,total,mas,n,pk,pkn)=>`<div class="money ${cls}"><span class="head"><span class="ico" aria-hidden="true">${ico}</span>${lab}</span>
+    <span class="big num">${fmtE(total)}</span>
+    <span class="share" aria-hidden="true"><i style="width:${(total/tot*100).toFixed(1)}%"></i></span>
+    <span class="det num">${Math.round(total/tot*100)} % tržieb · masáže ${fmtE(mas)} (${n}×)${pkn?` · poukazy ${fmtE(pk)} (${pkn}×)`:''}</span></div>`;
+  $('split').innerHTML=tile('cash','€','Hotovosť',tc,c.cash,cnt('cash'),sum(pc),pc.length)+tile('bank','▭','Banka / karta',tb,c.banka,cnt('banka'),sum(pb),pb.length)+
+    (pn.length?`<p class="hint">Pri ${pn.length} poukazoch (${fmtE(sum(pn))}) nie je uvedené, ako boli zaplatené — doplňte to v karte Darčekové poukazy.</p>`:'');
+}
+
+/* ---------- MASÁŽE ---------- */
+function renderM(c){
+  const fm=$('fMaserka').value,fp=$('fPlatba').value;
+  const sel=$('fMaserka');const cur=sel.value;
+  sel.innerHTML='<option value="">Všetky masérky</option>'+maserky().map(n=>`<option ${n===cur?'selected':''}>${esc(n)}</option>`).join('');
+  $('dlMaserky').innerHTML=maserky().map(n=>`<option value="${esc(n)}">`).join('');
+  let L=c.M.filter(m=>!fm||m.maserka===fm).filter(m=>{
+    if(!fp)return true;if(fp==='cash')return +m.cash>0;if(fp==='banka')return +m.banka>0;if(fp==='kupon')return m.kupon;if(fp==='poukaz')return !!m.poukazId;if(fp==='zadarmo')return !!m.zadarmo;
+    return !(+m.cash)&&!(+m.banka)&&!m.kupon&&!m.poukazId&&!m.zadarmo});
+  L.sort((a,b)=>(b.datum||'').localeCompare(a.datum||'')||(a.poradie||0)-(b.poradie||0));
+  const noPay=c.M.filter(m=>!(+m.cash)&&!(+m.banka)&&!m.kupon&&!m.poukazId&&!m.zadarmo);
+  const w=$('mWarn');w.hidden=!noPay.length||!!fp;
+  if(noPay.length)w.innerHTML=`<strong>${noPay.length} ${noPay.length<5?'masáže':'masáží'} bez zapísanej platby</strong> (${noPay.map(m=>fmtD(m.datum)+' '+esc(m.maserka)).join(', ')}). Skontrolujte, či nechýba suma — ukážete si ich filtrom „Bez platby“.`;
+  if(!S.loaded.m){$('tblM').innerHTML='<tr><td class="empty">Načítavam masáže…</td></tr>';return}
+  if(!L.length){$('tblM').innerHTML=`<tr><td class="empty">${S.masaze.length?'Žiadne masáže pre tento filter.':'Zatiaľ tu nie sú žiadne masáže. Pridajte prvú tlačidlom „+ Pridať masáž“.'}</td></tr>`;return}
+  let prev=null;
+  const rows=L.map(m=>{const t=(+m.cash||0)+(+m.banka||0)+(m.kupon?(+m.kuponHodnota||0):0);
+    const none=!(+m.cash)&&!(+m.banka)&&!m.kupon&&!m.poukazId&&!m.zadarmo;const ds=prev!==null&&prev!==m.datum;prev=m.datum;
+    const conf=S.confirm==='m:'+m.id;
+    return `<tr class="${ds?'day-start':''}"><td class="num">${fmtD(m.datum)}${m.cas?`<div class="note">${esc(m.cas)}</div>`:''}</td>
+     <td><span class="who"><i class="dot" style="background:${colorOf(m.maserka)}"></i>${esc(m.maserka)}</span></td>
+     <td>${esc(m.typ)}</td><td class="r num">${m.minuty||'–'}</td>
+     <td class="r num c-cash">${+m.cash?fmtE(m.cash):''}</td><td class="r num c-bank">${+m.banka?fmtE(m.banka):''}</td>
+     <td>${m.kupon?`<span class="pill kup">kupón${m.kuponOd?' · '+esc(m.kuponOd):''}${+m.kuponHodnota?' · '+fmtE(m.kuponHodnota):''}</span>`:m.zadarmo?'<span class="pill ok">zadarmo · propagácia</span>':m.poukazId?`<span class="pill pk">poukaz ${esc(pkNum(m.poukazId))}</span>`:none?'<span class="pill warn">bez platby</span>':''}</td>
+     <td class="r num"><strong>${fmtE(t)}</strong></td>
+     <td class="note">${esc(m.poznamka)}</td>
+     <td class="r" data-write>${conf?`<span class="confirm">Zmazať?<button class="btn danger small" data-act="delM" data-id="${m.id}">Áno</button><button class="btn ghost small" data-act="noDel">Nie</button></span>`:
+       `<button class="link" data-act="editM" data-id="${m.id}">Upraviť</button><button class="link del" data-act="askDelM" data-id="${m.id}">Zmazať</button>`}</td></tr>`}).join('');
+  const sc=L.reduce((a,m)=>a+(+m.cash||0),0),sb=L.reduce((a,m)=>a+(+m.banka||0),0),sk=L.reduce((a,m)=>a+(m.kupon?(+m.kuponHodnota||0):0),0),smin=L.reduce((a,m)=>a+(+m.minuty||0),0);
+  $('tblM').innerHTML=`<thead><tr><th>Dátum</th><th>Masérka</th><th>Masáž</th><th class="r">Min</th><th class="r c-cash">Hotovosť</th><th class="r c-bank">Banka / karta</th><th>Kupón</th><th class="r">Spolu</th><th>Poznámka</th><th data-write></th></tr></thead>
+   <tbody>${rows}</tbody><tfoot><tr><td colspan="3">${L.length} masáží</td><td class="r num">${smin}</td><td class="r num c-cash">${fmtE(sc)}</td><td class="r num c-bank">${fmtE(sb)}</td><td class="num">${L.filter(m=>m.kupon).length}×</td><td class="r num">${fmtE(sc+sb+sk)}</td><td colspan="2"></td></tr></tfoot>`;
+}
+
+function openM(m){
+  S.editM=m?m.id:null;$('formMTitle').textContent=m?'Upraviť masáž':'Nová masáž';
+  $('mDatum').value=m?m.datum:today();$('mCas').value=m?.cas||'';$('mMaserka').value=m?.maserka||'';
+  $('mTyp').value=m?.typ||'Thai oil';$('mMin').value=m?.minuty||'';$('mCash').value=+m?.cash?m.cash:'';
+  $('mBanka').value=+m?.banka?m.banka:'';$('mKuponOd').value=m?.kupon?(m.kuponOd||'kupón'):'';$('mKuponH').value=+m?.kuponHodnota?m.kuponHodnota:'';
+  fillPkSelect(m?.poukazId||'');$('mZadarmo').checked=!!m?.zadarmo;
+  $('mPozn').value=m?.poznamka||'';$('mErr').hidden=true;$('formM').hidden=false;$('mDatum').focus();
+}
+async function saveM(e){
+  e.preventDefault();
+  const d={datum:$('mDatum').value,cas:$('mCas').value.trim(),maserka:$('mMaserka').value.trim(),typ:$('mTyp').value.trim(),
+    minuty:parseNum($('mMin').value),cash:parseNum($('mCash').value),banka:parseNum($('mBanka').value),
+    kuponOd:$('mKuponOd').value.trim(),kuponHodnota:parseNum($('mKuponH').value),poznamka:$('mPozn').value.trim(),poukazId:$('mPoukaz').value,zadarmo:$('mZadarmo').checked};
+  d.kupon=!!d.kuponOd||d.kuponHodnota>0;
+  const err=!d.datum?'Vyplňte dátum.':!d.maserka?'Vyplňte meno masérky.':[d.minuty,d.cash,d.banka,d.kuponHodnota].some(isNaN)?'Sumy a minúty musia byť čísla (napr. 40 alebo 52,20).':'';
+  if(err){$('mErr').textContent=err;$('mErr').hidden=false;return}
+  const old=S.editM&&S.masaze.find(m=>m.id===S.editM);
+  d.poradie=old?old.poradie:Date.now();
+  const ref=dbRef('masaze',S.editM);
+  try{setStatus('Ukladám…');await ref.set(d);$('formM').hidden=true;S.editM=null;setStatus('Uložené')}
+  catch(x){failWrite(x,'mErr')}
+}
+
+/* ---------- NÁKLADY ---------- */
+function renderN(c){
+  const L=[...c.N].sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
+  const byK={};L.forEach(n=>{const k=n.kategoria||'Ostatné';byK[k]=(byK[k]||0)+(+n.suma||0)});
+  const ks=Object.entries(byK).sort((a,b)=>b[1]-a[1]);
+  $('katCards').innerHTML=ks.length?`<div class="card"><h3>Náklady podľa kategórií</h3>${ks.map(([k,v])=>`<div class="kv"><span>${esc(k)}</span><span class="num">${fmtE(v)}</span></div>`).join('')}<div class="kv total"><span>Spolu</span><span class="num">${fmtE(c.nakl)}</span></div>
+   <div class="kv"><span>z hotovosti</span><span class="num c-cash">${fmtE(L.filter(n=>n.zdroj!=='Účet').reduce((a,n)=>a+(+n.suma||0),0))}</span></div>
+   <div class="kv"><span>z účtu</span><span class="num c-bank">${fmtE(L.filter(n=>n.zdroj==='Účet').reduce((a,n)=>a+(+n.suma||0),0))}</span></div></div>`:'';
+  if(!S.loaded.n){$('tblN').innerHTML='<tr><td class="empty">Načítavam náklady…</td></tr>';return}
+  if(!L.length){$('tblN').innerHTML=`<tr><td class="empty">${S.naklady.length?'V tomto období nie sú žiadne náklady.':'Zatiaľ žiadne náklady. Pridajte prvý tlačidlom „+ Pridať náklad“ — napríklad nájom alebo nákup olejov.'}</td></tr>`;return}
+  $('tblN').innerHTML=`<thead><tr><th>Dátum</th><th>Kategória</th><th>Popis</th><th class="r">Suma</th><th>Zaplatené z</th><th data-write></th></tr></thead><tbody>${
+   L.map(n=>{const conf=S.confirm==='n:'+n.id;return `<tr><td class="num">${fmtD(n.datum)}</td><td>${esc(n.kategoria||'Ostatné')}</td><td>${esc(n.popis)}</td><td class="r num"><strong>${fmtE(n.suma)}</strong></td><td>${zdrojPill(n.zdroj)}</td>
+   <td class="r" data-write>${conf?`<span class="confirm">Zmazať?<button class="btn danger small" data-act="delN" data-id="${n.id}">Áno</button><button class="btn ghost small" data-act="noDel">Nie</button></span>`:
+   `<button class="link" data-act="editN" data-id="${n.id}">Upraviť</button><button class="link del" data-act="askDelN" data-id="${n.id}">Zmazať</button>`}</td></tr>`}).join('')
+  }</tbody><tfoot><tr><td colspan="3">Spolu</td><td class="r num">${fmtE(c.nakl)}</td><td></td><td data-write></td></tr></tfoot>`;
+}
+function openN(n){
+  S.editN=n?n.id:null;$('formNTitle').textContent=n?'Upraviť náklad':'Nový náklad';
+  $('nDatum').value=n?n.datum:today();$('nKat').value=n?.kategoria||'';$('nSuma').value=n?n.suma:'';$('nZdroj').value=n?.zdroj||'Hotovosť';$('nPopis').value=n?.popis||'';
+  $('nErr').hidden=true;$('formN').hidden=false;$('nDatum').focus();
+}
+async function saveN(e){
+  e.preventDefault();
+  const d={datum:$('nDatum').value,kategoria:$('nKat').value.trim()||'Ostatné',suma:parseNum($('nSuma').value),popis:$('nPopis').value.trim(),zdroj:$('nZdroj').value};
+  const err=!d.datum?'Vyplňte dátum.':isNaN(d.suma)||!$('nSuma').value.trim()?'Zadajte sumu ako číslo (napr. 350 alebo 12,90).':'';
+  if(err){$('nErr').textContent=err;$('nErr').hidden=false;return}
+  const ref=dbRef('naklady',S.editN);
+  try{setStatus('Ukladám…');await ref.set(d);$('formN').hidden=true;S.editN=null;setStatus('Uložené')}
+  catch(x){failWrite(x,'nErr')}
+}
+
+/* ---------- VKLADY + PENIAZE PREVÁDZKY ---------- */
+const zdrojPill=z=>z==='Účet'?'<span class="pill" style="background:color-mix(in srgb,var(--plum) 14%,transparent);color:var(--plum)">účet</span>':'<span class="pill" style="background:var(--accent-soft);color:var(--accent)">hotovosť</span>';
+function renderV(){
+  const all=(()=>{const p=S.period;S.period='all';const c=calc();S.period=p;return c})();
+  const vk=S.vklady.reduce((a,v)=>a+(+v.suma||0),0);
+  const isU=x=>x.zdroj==='Účet',sm=(L,f)=>L.reduce((a,x)=>a+(+f(x)||0),0);
+  const vkH=sm(S.vklady.filter(v=>!isU(v)),v=>v.suma),vkU=vk-vkH;
+  const mH=sm(S.masaze,m=>m.cash),mU=sm(S.masaze,m=>m.banka);
+  const pH=sm(S.poukazy.filter(p=>p.platba==='Hotovosť'),p=>p.suma),pU=sm(S.poukazy.filter(p=>p.platba==='Banka / karta'),p=>p.suma);
+  const nH=sm(S.naklady.filter(n=>!isU(n)),n=>n.suma),nU=sm(S.naklady.filter(isU),n=>n.suma);
+  const vy=all.vypl,H=vkH+mH+pH-nH-vy,U=vkU+mU+pU-nU;
+  $('cashbox').innerHTML=`<span class="lab">Koľko má byť teraz — od začiatku, bez ohľadu na zvolené obdobie</span>
+   <div class="bal">
+    <div class="money cash"><span class="head"><span class="ico" aria-hidden="true">€</span>V pokladni (hotovosť)</span><span class="big num ${H<0?'neg':''}">${fmtE(H)}</span>
+     <span class="det num">vklady ${fmtE(vkH)} + masáže ${fmtE(mH)} + poukazy ${fmtE(pH)} − náklady ${fmtE(nH)}${vy?' − výplaty masérok '+fmtE(vy):''}</span></div>
+    <div class="money bank"><span class="head"><span class="ico" aria-hidden="true">▭</span>Na účte</span><span class="big num ${U<0?'neg':''}">${fmtE(U)}</span>
+     <span class="det num">${vkU?'vklady '+fmtE(vkU)+' + ':''}masáže ${fmtE(mU)} + poukazy ${fmtE(pU)} − náklady ${fmtE(nU)}</span></div>
+   </div>
+   <span>Spolu ${fmtE(H+U)}. Vklad od majiteľa sa sem ráta, ale do zisku nie, lebo nie je zarobený.${vy?' Výplaty masérok sa odpočítavajú z pokladne.':''}</span>`;
+  const L=[...S.vklady].sort((a,b)=>(a.datum||'').localeCompare(b.datum||''));
+  $('listV').innerHTML=L.length?L.map(v=>{const conf=S.confirm==='v:'+v.id;return `<div class="vrow"><span><span class="num">${fmtD(v.datum)}</span> · ${esc(v.popis||'Vklad')} ${zdrojPill(v.zdroj)}</span>
+    <span class="acts"><strong class="num">${fmtE(v.suma)}</strong><span data-write>${conf?`<span class="confirm">Zmazať?<button class="btn danger small" data-act="delV" data-id="${v.id}">Áno</button><button class="btn ghost small" data-act="noDel">Nie</button></span>`:
+    `<button class="link" data-act="editV" data-id="${v.id}">Upraviť</button><button class="link del" data-act="askDelV" data-id="${v.id}">Zmazať</button>`}</span></span></div>`}).join('')+
+    `<div class="vrow"><strong>Spolu</strong><strong class="num">${fmtE(vk)}</strong></div>`:'<p class="hint">Zatiaľ žiadny vklad.</p>';
+}
+function openV(v){S.editV=v?v.id:null;$('vDatum').value=v?v.datum:today();$('vSuma').value=v?v.suma:'';$('vZdroj').value=v?.zdroj||'Hotovosť';$('vPopis').value=v?.popis||'';$('vErr').hidden=true;$('formV').hidden=false;$('vSuma').focus()}
+async function saveV(e){
+  e.preventDefault();
+  const d={datum:$('vDatum').value,suma:parseNum($('vSuma').value),popis:$('vPopis').value.trim()||'Vklad na chod prevádzky',zdroj:$('vZdroj').value};
+  const err=!d.datum?'Vyplňte dátum.':isNaN(d.suma)||!$('vSuma').value.trim()?'Zadajte sumu ako číslo (napr. 300).':'';
+  if(err){$('vErr').textContent=err;$('vErr').hidden=false;return}
+  const ref=dbRef('vklady',S.editV);
+  try{setStatus('Ukladám…');await ref.set(d);$('formV').hidden=true;S.editV=null;setStatus('Uložené')}catch(x){failWrite(x,'vErr')}
+}
+
+/* ---------- POUKAZY ---------- */
+const pkNum=id=>{const p=S.poukazy.find(x=>x.id===id);return p?(p.cislo||'bez čísla'):'(zmazaný)'};
+const pkUse=id=>S.masaze.filter(m=>m.poukazId===id);
+function nextPkNum(){let mx=0;S.poukazy.forEach(p=>{const n=parseInt(String(p.cislo||'').replace(/\D/g,''),10);if(n>mx)mx=n});return 'P-'+String(mx+1).padStart(3,'0')}
+function pkStav(p){const u=pkUse(p.id);if(u.length)return {k:'used',t:'Použitý '+fmtD(u[0].datum)+' · '+u[0].maserka};
+  if(p.platnostDo&&p.platnostDo<today())return {k:'exp',t:'Po platnosti'};return {k:'ok',t:'Platný'}}
+function fillPkSelect(cur){
+  const L=S.poukazy.filter(p=>p.id===cur||!pkUse(p.id).length).sort((a,b)=>(a.cislo||'').localeCompare(b.cislo||'','sk'));
+  $('mPoukaz').innerHTML='<option value="">— nie —</option>'+L.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.cislo||'bez čísla')} · ${fmtE(p.suma)}${p.preKoho?' · '+esc(p.preKoho):''}</option>`).join('');
+}
+function renderPk(c){
+  const all=S.poukazy,used=all.filter(p=>pkUse(p.id).length),open=all.filter(p=>!pkUse(p.id).length);
+  $('pkCards').innerHTML=`<div class="card"><h3>Predané v zvolenom období</h3><div class="kv"><span>Počet</span><span class="num">${c.P.length}</span></div><div class="kv total"><span>Tržba z poukazov</span><span class="num">${fmtE(c.pouk)}</span></div></div>
+   <div class="card"><h3>Stav všetkých poukazov</h3><div class="kv"><span>Použité</span><span class="num">${used.length} · ${fmtE(used.reduce((a,p)=>a+(+p.suma||0),0))}</span></div>
+   <div class="kv"><span>Ešte neuplatnené</span><span class="num">${open.length} · ${fmtE(open.reduce((a,p)=>a+(+p.suma||0),0))}</span></div>
+   <p class="hint">Neuplatnené poukazy sú už zaplatené, masáž za ne ešte treba odrobiť.</p></div>`;
+  if(!S.loaded.p){$('tblP').innerHTML='<tr><td class="empty">Načítavam poukazy…</td></tr>';return}
+  const L=[...c.P].sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
+  if(!L.length){$('tblP').innerHTML=`<tr><td class="empty">${all.length?'V tomto období nebol predaný žiadny poukaz.':'Zatiaľ žiadne poukazy. Pridajte prvý tlačidlom „+ Predať poukaz“.'}</td></tr>`;return}
+  $('tblP').innerHTML=`<thead><tr><th>Číslo</th><th>Predaný</th><th>Kto kúpil</th><th>Pre koho</th><th>Masáž</th><th class="r">Suma</th><th>Zaplatené</th><th>Stav</th><th>Poznámka</th><th data-write></th></tr></thead><tbody>${
+   L.map(p=>{const st=pkStav(p),conf=S.confirm==='p:'+p.id;return `<tr><td><strong>${esc(p.cislo||'–')}</strong></td><td class="num">${fmtD(p.datum)}</td><td>${esc(p.kupujuci)}</td><td>${esc(p.preKoho)}</td><td>${esc(p.masaz)}</td>
+   <td class="r num"><strong>${fmtE(p.suma)}</strong></td><td>${esc(p.platba)}</td>
+   <td><span class="pill ${st.k==='used'?'pk':st.k==='exp'?'warn':'ok'}">${esc(st.t)}</span>${p.platnostDo&&st.k!=='used'?`<div class="note">do ${fmtD(p.platnostDo)}</div>`:''}</td>
+   <td class="note">${esc(p.poznamka)}</td>
+   <td class="r" data-write>${conf?`<span class="confirm">Zmazať?<button class="btn danger small" data-act="delP" data-id="${p.id}">Áno</button><button class="btn ghost small" data-act="noDel">Nie</button></span>`:
+   `<button class="link" data-act="editP" data-id="${p.id}">Upraviť</button><button class="link del" data-act="askDelP" data-id="${p.id}">Zmazať</button>`}</td></tr>`}).join('')
+  }</tbody><tfoot><tr><td colspan="5">${L.length} poukazov</td><td class="r num">${fmtE(c.pouk)}</td><td colspan="4"></td></tr></tfoot>`;
+}
+function openP(p){
+  S.editP=p?p.id:null;$('formPTitle').textContent=p?'Upraviť poukaz':'Nový darčekový poukaz';
+  $('pCislo').value=p?(p.cislo||''):nextPkNum();$('pDatum').value=p?p.datum:today();$('pSuma').value=p?p.suma:'';
+  $('pPlatba').value=p?.platba||'Hotovosť';$('pKupujuci').value=p?.kupujuci||'';$('pPreKoho').value=p?.preKoho||'';
+  $('pMasaz').value=p?.masaz||'';$('pPlatnost').value=p?.platnostDo||'';$('pPozn').value=p?.poznamka||'';
+  $('pErr').hidden=true;$('formP').hidden=false;$('pSuma').focus();
+}
+async function saveP(e){
+  e.preventDefault();
+  const d={cislo:$('pCislo').value.trim(),datum:$('pDatum').value,suma:parseNum($('pSuma').value),platba:$('pPlatba').value,
+    kupujuci:$('pKupujuci').value.trim(),preKoho:$('pPreKoho').value.trim(),masaz:$('pMasaz').value.trim(),platnostDo:$('pPlatnost').value,poznamka:$('pPozn').value.trim()};
+  const err=!d.datum?'Vyplňte dátum predaja.':isNaN(d.suma)||!$('pSuma').value.trim()?'Zadajte sumu ako číslo (napr. 60 alebo 52,20).':
+    S.poukazy.some(p=>p.id!==S.editP&&d.cislo&&p.cislo===d.cislo)?'Poukaz s týmto číslom už existuje.':'';
+  if(err){$('pErr').textContent=err;$('pErr').hidden=false;return}
+  const ref=dbRef('poukazy',S.editP);
+  try{setStatus('Ukladám…');await ref.set(d);$('formP').hidden=true;S.editP=null;setStatus('Uložené')}
+  catch(x){failWrite(x,'pErr')}
+}
+
+/* ---------- PREHĽAD ---------- */
+function renderP(c){
+  const days={};c.M.forEach(m=>{const d=days[m.datum]||(days[m.datum]={c:0,b:0,k:0});d.c+=+m.cash||0;d.b+=+m.banka||0;d.k+=kupVal(m)});
+  const keys=Object.keys(days).sort();const max=Math.max(1,...keys.map(k=>days[k].c+days[k].b+days[k].k));
+  $('chart').innerHTML=keys.length?keys.map(k=>{const d=days[k],t=d.c+d.b+d.k,h=v=>(v/max*130).toFixed(1)+'px';
+    return `<div class="col" title="${fmtD(k)}: ${fmtE(t)}"><span class="v num">${Math.round(t)}</span><div class="stack">
+     <div class="seg" style="height:${h(d.c)};background:var(--accent)"></div><div class="seg" style="height:${h(d.b)};background:var(--plum)"></div><div class="seg" style="height:${h(d.k)};background:var(--warn)"></div></div>
+     <span class="d num">${+k.slice(8)}.${+k.slice(5,7)}.</span></div>`}).join(''):'<div class="empty" style="width:100%">Žiadne masáže v tomto období.</div>';
+  $('masCards').innerHTML=maserky().map(n=>{const mm=c.M.filter(m=>m.maserka===n);if(!mm.length)return'';
+    const cs=mm.reduce((a,m)=>a+(+m.cash||0),0),bs=mm.reduce((a,m)=>a+(+m.banka||0),0),ks=mm.reduce((a,m)=>a+kupVal(m),0),
+      mins=mm.reduce((a,m)=>a+(+m.minuty||0),0),v=vyplata(n,c.M),tr=cs+bs+ks;
+    return `<div class="card"><h3 class="who"><i class="dot" style="background:${colorOf(n)}"></i>${esc(n)}</h3>
+     <div class="kv"><span>Masáže</span><span class="num">${mm.length} · ${(mins/60).toLocaleString('sk-SK',{maximumFractionDigits:1})} h</span></div>
+     <div class="kv"><span>Hotovosť</span><span class="num">${fmtE(cs)}</span></div>
+     <div class="kv"><span>Banka</span><span class="num">${fmtE(bs)}</span></div>
+     <div class="kv"><span>Kupóny</span><span class="num">${mm.filter(m=>m.kupon).length}×${S.nast.kupony?' · '+fmtE(ks):''}</span></div>
+     <div class="kv"><span>Priemer na hodinu</span><span class="num">${mins?fmtE(tr/(mins/60)):'–'}</span></div>
+     <div class="kv total"><span>Tržba</span><span class="num">${fmtE(tr)}</span></div>
+     <div class="kv"><span>Výplata</span><span class="num">−${fmtE(v)}</span></div></div>`}).join('');
+  const byL={};c.M.forEach(m=>{const k=m.minuty||0;const o=byL[k]||(byL[k]={n:0,paid:0,sum:0,kup:0});o.n++;if(m.kupon)o.kup++;const p=(+m.cash||0)+(+m.banka||0);if(p>0){o.paid++;o.sum+=p}});
+  const lk=Object.keys(byL).map(Number).sort((a,b)=>a-b);
+  $('tblDlzka').innerHTML=`<thead><tr><th>Dĺžka</th><th class="r">Počet</th><th class="r">Z toho kupón</th><th class="r">Priemerná cena (platené)</th><th class="r">Spolu zaplatené</th></tr></thead><tbody>${
+   lk.map(k=>{const o=byL[k];return `<tr><td>${k?k+' min':'neuvedené'}</td><td class="r num">${o.n}</td><td class="r num">${o.kup}</td><td class="r num">${o.paid?fmtE(o.sum/o.paid):'–'}</td><td class="r num">${fmtE(o.sum)}</td></tr>`}).join('')}</tbody>`;
+}
+
+/* ---------- NASTAVENIA ---------- */
+let setTimer=null;
+function renderS(){
+  const host=$('setCards');
+  if(host.contains(document.activeElement))return;
+  host.innerHTML=maserky().map(n=>{const v=S.nast.vyplaty[n]||{};return `<div class="card"><h3 class="who"><i class="dot" style="background:${colorOf(n)}"></i>${esc(n)}</h3>
+    <div class="grid"><label class="f">Podiel z tržby (%)<input type="text" inputmode="decimal" id="sp-${esc(n)}" data-m="${esc(n)}" data-k="percento" value="${+v.percento||''}" placeholder="0"></label>
+    <label class="f">Za hodinu (€)<input type="text" inputmode="decimal" id="sh-${esc(n)}" data-m="${esc(n)}" data-k="zaHodinu" value="${+v.zaHodinu||''}" placeholder="0"></label></div></div>`}).join('')||'<p class="hint">Masérky sa zobrazia po načítaní masáží.</p>';
+  $('sKupony').checked=!!S.nast.kupony;
+}
+function saveSettingsSoon(){clearTimeout(setTimer);setTimer=setTimeout(async()=>{try{setStatus('Ukladám…');await dbRef('nastavenia','hlavne').set(S.nast);setStatus('Uložené')}catch(x){failWrite(x)}},600)}
+
+function failWrite(x,errId){
+  const code=x&&x.code;
+  if(code==='invalid_argument'&&S.canWrite===null){S.canWrite=false;applyWrite()}
+  if(code==='auth')return;
+  const msg=code==='invalid_argument'?'Na úpravy nemáte oprávnenie — táto stránka je pre vás len na čítanie.':code==='quota_exceeded'?'Úložisko je plné. Zmažte staré záznamy a skúste znova.':'Nepodarilo sa uložiť. Skúste to o chvíľu znova.';
+  setStatus(msg,true);if(errId){$(errId).textContent=msg;$(errId).hidden=false}
+}
+function applyWrite(){document.querySelectorAll('[data-write]').forEach(el=>el.hidden=S.canWrite===false);
+  document.querySelectorAll('#p-nastavenia input').forEach(i=>i.disabled=S.canWrite===false)}
+
+function render(){
+  renderPeriods();const c=calc();renderEq(c);renderSplit(c);renderM(c);renderN(c);renderV();renderPk(c);renderP(c);renderS();applyWrite();
+}
+
+/* ---------- events ---------- */
+$('periods').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;S.period=b.dataset.p;try{localStorage.setItem('obdobie',S.period)}catch(_){};render()});
+document.querySelector('.tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;S.tab=b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t===b));
+  ['masaze','naklady','poukazy','prehlad','nastavenia'].forEach(k=>$('p-'+k).hidden=k!==S.tab);try{localStorage.setItem('tab',S.tab)}catch(_){}});
+$('fMaserka').addEventListener('change',render);$('fPlatba').addEventListener('change',render);
+$('addM').onclick=()=>openM(null);$('cancelM').onclick=()=>{$('formM').hidden=true;S.editM=null};$('formM').addEventListener('submit',saveM);
+$('addP').onclick=()=>openP(null);$('cancelP').onclick=()=>{$('formP').hidden=true;S.editP=null};$('formP').addEventListener('submit',saveP);
+$('addV').onclick=()=>openV(null);$('cancelV').onclick=()=>{$('formV').hidden=true;S.editV=null};$('formV').addEventListener('submit',saveV);
+$('addN').onclick=()=>openN(null);$('cancelN').onclick=()=>{$('formN').hidden=true;S.editN=null};$('formN').addEventListener('submit',saveN);
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-act]');if(!b)return;const id=b.dataset.id,a=b.dataset.act;
+  if(a==='editM'){openM(S.masaze.find(m=>m.id===id));$('formM').scrollIntoView({block:'nearest',behavior:'smooth'})}
+  if(a==='editN'){openN(S.naklady.find(n=>n.id===id));$('formN').scrollIntoView({block:'nearest',behavior:'smooth'})}
+  if(a==='askDelM'){S.confirm='m:'+id;render()} if(a==='askDelN'){S.confirm='n:'+id;render()} if(a==='noDel'){S.confirm=null;render()}
+  if(a==='editP'){openP(S.poukazy.find(p=>p.id===id));$('formP').scrollIntoView({block:'nearest',behavior:'smooth'})}
+  if(a==='askDelP'){S.confirm='p:'+id;render()}
+  if(a==='editV')openV(S.vklady.find(v=>v.id===id));
+  if(a==='askDelV'){S.confirm='v:'+id;render()}
+  const col={delM:'masaze',delN:'naklady',delP:'poukazy',delV:'vklady'}[a];
+  if(col){S.confirm=null;try{setStatus('Mažem…');await dbRef(col,id).delete();setStatus('Zmazané')}catch(x){failWrite(x)}}
+});
+$('setCards').addEventListener('input',e=>{const i=e.target;if(!i.dataset.m)return;const n=parseNum(i.value);if(isNaN(n))return;
+  const v=S.nast.vyplaty[i.dataset.m]={...(S.nast.vyplaty[i.dataset.m]||{})};v[i.dataset.k]=n;S.nast={...S.nast,vyplaty:{...S.nast.vyplaty,[i.dataset.m]:v}};
+  const c=calc();renderEq(c);renderP(c);saveSettingsSoon()});
+$('sKupony').addEventListener('change',e=>{S.nast={...S.nast,kupony:e.target.checked};render();saveSettingsSoon()});
+
+try{const p=localStorage.getItem('obdobie');if(p)S.period=p;const t=localStorage.getItem('tab');if(t&&$('p-'+t)){document.querySelector(`[data-tab="${t}"]`).click()}}catch(_){}
+render();
+
+/* ---------- data (Google Apps Script) ---------- */
+const DEFAULT_API='';   // adresa webovej aplikácie Google Apps Script (…/exec)
+const K_URL='masaze-api-url',K_PASS='masaze-heslo';
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}},del:k=>{try{localStorage.removeItem(k)}catch(_){}}};
+S.api=DEFAULT_API||ls.get(K_URL)||'';S.heslo=ls.get(K_PASS)||'';
+const newId=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return Array.from(a,b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('')};
+function validUrl(u){try{const x=new URL(u);return x.protocol==='https:'&&x.hostname==='script.google.com'&&/^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(x.pathname)}catch(_){return false}}
+async function api(body){
+  let r;
+  try{r=await fetch(S.api,{method:'POST',body:JSON.stringify({...body,heslo:S.heslo}),redirect:'follow',credentials:'omit'})}
+  catch(_){throw {code:'unavailable'}}
+  let j;try{j=await r.json()}catch(_){throw {code:'unavailable'}}
+  if(!j.ok){if(j.chyba==='zle_heslo'){showLogin('Nesprávne heslo.');throw {code:'auth'}}
+    if(j.chyba==='heslo_nenastavene'){showLogin('V Google skripte ešte nie je nastavené heslo (riadok HESLO).');throw {code:'auth'}}
+    throw {code:'server',message:j.chyba}}
+  if(j.data)applyData(j.data);
+  return j;
+}
+function dbRef(kol,id){return {
+  set:d=>api({akcia:'ulozit',kolekcia:kol,id:id||newId(),data:d}),
+  delete:()=>api({akcia:'zmazat',kolekcia:kol,id})
+}}
+function applyData(d){
+  S.masaze=d.masaze||[];S.naklady=d.naklady||[];S.poukazy=d.poukazy||[];S.vklady=d.vklady||[];
+  const n=d.nastavenia||{};S.nast={vyplaty:n.vyplaty||{},kupony:!!n.kupony};
+  S.loaded.m=S.loaded.n=S.loaded.p=true;S.lastLoad=Date.now();
+  setStatus('Uložené v Google tabuľke · '+S.masaze.length+' masáží');render();
+}
+function showLogin(msg){$('login').hidden=false;$('urlWrap').hidden=!!DEFAULT_API;$('apiUrl').value=S.api;
+  $('loginErr').textContent=msg||'';$('loginErr').hidden=!msg;$('loginBtn').disabled=false;$('loginBtn').textContent='Prihlásiť';
+  setTimeout(()=>(S.api?$('heslo'):$('apiUrl')).focus(),50)}
+async function nacitat(){setStatus('Načítavam…');await api({akcia:'nacitat'});$('login').hidden=true}
+$('loginForm').addEventListener('submit',async e=>{e.preventDefault();
+  const u=DEFAULT_API||$('apiUrl').value.trim(),h=$('heslo').value;
+  if(!validUrl(u)){$('loginErr').textContent='Adresa musí byť v tvare https://script.google.com/macros/s/…/exec';$('loginErr').hidden=false;return}
+  if(!h){$('loginErr').textContent='Zadajte heslo.';$('loginErr').hidden=false;return}
+  S.api=u;S.heslo=h;$('loginBtn').disabled=true;$('loginBtn').textContent='Overujem…';
+  try{await nacitat();ls.set(K_URL,u);if($('zapamatat').checked)ls.set(K_PASS,h);else ls.del(K_PASS);$('heslo').value=''}
+  catch(x){if(x.code!=='auth')showLogin('Nepodarilo sa spojiť so skriptom. Skontrolujte adresu a či je skript nasadený pre „Ktokoľvek“.')}
+});
+$('refresh').onclick=()=>nacitat().catch(x=>{if(x.code!=='auth')setStatus('Nepodarilo sa načítať. Skúste znova.',true)});
+$('logout').onclick=()=>{ls.del(K_PASS);S.heslo='';S.masaze=[];S.naklady=[];S.poukazy=[];S.vklady=[];render();showLogin('')};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.heslo&&$('login').hidden&&Date.now()-(S.lastLoad||0)>60000)nacitat().catch(()=>{})});
+S.canWrite=true;
+if(S.api&&S.heslo){nacitat().catch(x=>{if(x.code!=='auth')showLogin('Nepodarilo sa spojiť so skriptom. Skúste to znova.')})}else showLogin('');
+})();
+</script>
+</body>
+</html>
